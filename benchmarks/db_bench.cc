@@ -24,6 +24,9 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+
+#include "util/testlog.h"
+
 #define PRINT_BATCH 4000000
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -1224,6 +1227,7 @@ class Benchmark {
 //    KeyBuffer key;
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
+    LOGFC(COLOR_CYAN, stderr, "start the random write for thread %d...\n", thread->tid);
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
@@ -1246,6 +1250,7 @@ class Benchmark {
       }
     }
     thread->stats.AddBytes(bytes);
+    LOGFC(COLOR_CYAN, stderr, "end the random write for thread %d...\n", thread->tid);
   }
   void DoWrite_Sharded(ThreadState* thread, bool seq) {
     if (num_ != FLAGS_num) {
