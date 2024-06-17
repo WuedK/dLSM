@@ -1858,6 +1858,8 @@ int main(int argc, char** argv) {
   }
 
   TimberSaw::Benchmark benchmark;
+  LOGFC(COLOR_GREEN, stderr, "from CNode with id %i: bench start...\n", TimberSaw::RDMA_Manager::node_id);
   benchmark.Run();
+  LOGFC(COLOR_GREEN, stderr, "from CNode with id %i: bench ended\n", TimberSaw::RDMA_Manager::node_id);
   return 0;
 }

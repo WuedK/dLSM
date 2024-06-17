@@ -33,6 +33,7 @@ int main(int argc,char* argv[])
     mn_keeper = new TimberSaw::Memory_Node_Keeper(true, 19843, 88);
     TimberSaw::RDMA_Manager::node_id = 0;
   }
+  LOGFC(COLOR_GREEN, stderr, "from MNode with id %i: start...\n", TimberSaw::RDMA_Manager::node_id);
 
   mn_keeper->SetBackgroundThreads(12, TimberSaw::ThreadPoolType::CompactionThreadPool);
 //  std::thread CPU_utilization_heartbeat([&](){
@@ -46,7 +47,8 @@ int main(int argc,char* argv[])
 //  });
 //  CPU_utilization_heartbeat.detach();
   mn_keeper->Server_to_Client_Communication();
-
+  LOGFC(COLOR_GREEN, stderr, "from MNode with id %i: end...\n", TimberSaw::RDMA_Manager::node_id);
+  
   delete mn_keeper;
 
   return 0;
