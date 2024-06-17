@@ -3,6 +3,7 @@
 #include <memory_node/memory_node_keeper.h>
 
 #include "util/rdma.h"
+#include "util/testlog.h"
 
 //namespace TimberSaw{
 int main(int argc,char* argv[])
@@ -48,7 +49,7 @@ int main(int argc,char* argv[])
 //  CPU_utilization_heartbeat.detach();
   mn_keeper->Server_to_Client_Communication();
   LOGFC(COLOR_GREEN, stderr, "from MNode with id %i: end...\n", TimberSaw::RDMA_Manager::node_id);
-  
+
   delete mn_keeper;
 
   return 0;
