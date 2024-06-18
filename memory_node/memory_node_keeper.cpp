@@ -11,6 +11,8 @@
 #include "table/table_builder_bams.h"
 #include "table/table_builder_memoryside.h"
 
+#include "util/testlog.h"
+
 namespace TimberSaw {
 
 std::shared_ptr<RDMA_Manager> Memory_Node_Keeper::rdma_mg = std::shared_ptr<RDMA_Manager>();
@@ -1609,6 +1611,7 @@ Status Memory_Node_Keeper::InstallCompactionResultsToComputePreparation(
     rc = ibv_query_gid(rdma_mg->res->ib_ctx, rdma_mg->rdma_config.ib_port,
                        rdma_mg->rdma_config.gid_idx,
                        &(rdma_mg->res->my_gid));
+    LOGFC(COLOR_PURPLE, stderr, "after ibv_query_gid\n");
     if (rc) {
       fprintf(stderr, "could not get gid for port %d, index %d\n",
               rdma_mg->rdma_config.ib_port, rdma_mg->rdma_config.gid_idx);

@@ -467,13 +467,18 @@ class Stats {
     }
     AppendWithSpace(&extra, message_);
 
-    std::fprintf(stdout, "%-12s: %8.3f micros/op; %ld ops/sec;%s%s\n",
+    // std::fprintf(stdout, "%-12s: %8.3f micros/op; %ld ops/sec;%s%s\n",
+    //              name.ToString().c_str(), seconds_ * 1e6 / done_, (long)(done_/elapsed),
+    //              (extra.empty() ? "" : " "), extra.c_str());
+    LOGFC(COLOR_GREEN, stdout, "%-12s: %8.3f micros/op; %ld ops/sec;%s%s\n",
                  name.ToString().c_str(), seconds_ * 1e6 / done_, (long)(done_/elapsed),
                  (extra.empty() ? "" : " "), extra.c_str());
 
     if (FLAGS_histogram) {
-      std::fprintf(stdout, "Microseconds per op:\n%s\n",
+      LOGFC(COLOR_GREEN, stdout, "Microseconds per op:\n%s\n",
                    hist_.ToString().c_str());
+      // std::fprintf(stdout, "Microseconds per op:\n%s\n",
+      //              hist_.ToString().c_str());
     }
     std::fflush(stdout);
   }
