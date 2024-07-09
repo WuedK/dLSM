@@ -1662,6 +1662,7 @@ int RDMA_Manager::connect_qp_Mside(ibv_qp* qp, std::string& q_id) {
                         remote_con_data->gid);
   if (rc) {
     fprintf(stderr, "failed to modify QP state to RTR\n");
+    fprintf(stderr, "rc = %d, errno=%d\n", rc, errno);
     goto connect_qp_exit;
   }
   rc = modify_qp_to_rts(qp);
@@ -1745,6 +1746,7 @@ int RDMA_Manager::connect_qp(ibv_qp* qp, std::string& qp_type,
                         remote_con_data->gid);
   if (rc) {
     fprintf(stderr, "failed to modify QP state to RTR\n");
+    fprintf(stderr, "rc = %d, errno=%d\n", rc, errno);
     goto connect_qp_exit;
   }
   rc = modify_qp_to_rts(qp);
@@ -1797,6 +1799,7 @@ int RDMA_Manager::connect_qp(ibv_qp* qp, registered_qp_config* remote_con_data) 
                         remote_con_data->gid);
   if (rc) {
     fprintf(stderr, "failed to modify QP state to RTR\n");
+    fprintf(stderr, "rc = %d, errno=%d\n", rc, errno);
     goto connect_qp_exit;
   }
   rc = modify_qp_to_rts(qp);
@@ -1897,7 +1900,10 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
   flags = IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
           IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER;
   rc = ibv_modify_qp(qp, &attr, flags);
-  if (rc) fprintf(stderr, "failed to modify QP state to RTR\n");
+  if (rc) {
+    fprintf(stderr, "failed to modify QP state to RTR\n");
+    fprintf(stderr, "rc = %d, errno=%d\n", rc, errno);
+  }
   return rc;
 }
 /******************************************************************************
@@ -2784,7 +2790,7 @@ int RDMA_Manager::poll_completion(ibv_wc* wc_p, int num_entries,
         fprintf(stderr,
                 "number %d got bad completion with status: 0x%x, vendor syndrome: 0x%x\n",
                 i, wc_p[i].status, wc_p[i].vendor_err);
-        // assert(false);
+        assert(false);
         rc = 1;
       }
     }
@@ -2835,7 +2841,7 @@ int RDMA_Manager::try_poll_completions(ibv_wc* wc_p,
       fprintf(stderr,
               "number %d got bad completion with status: 0x%x, vendor syndrome: 0x%x\n",
               poll_result-1, wc_p[poll_result-1].status, wc_p[poll_result-1].vendor_err);
-      // assert(false);
+      assert(false);
     }
   }
 #endif
