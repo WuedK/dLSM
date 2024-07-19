@@ -1661,7 +1661,7 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
         sockfd = accept(listenfd, &address, &len);
         std::string client_id =
             std::string(
-                inet_ntoa(((struct sockaddr_in*)(&address))->sin_addr)) +
+                inet_ntoa(((struct sockaddr_in*)(&address))->sin_addr)) + " " +
                     std::to_string(((struct sockaddr_in*)(&address))->sin_port);
         // Client id must be composed of ip address and port number.
         std::cout << "connection built up from" << client_id << std::endl;
