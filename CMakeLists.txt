@@ -131,7 +131,6 @@ if(BUILD_SHARED_LIBS)
   add_compile_options(-fvisibility=hidden)
 endif(BUILD_SHARED_LIBS)
 
-add_compile_options(-libverbs)
 
 # Must be included before CMAKE_INSTALL_INCLUDEDIR is used.
 include(GNUInstallDirs)
@@ -331,6 +330,11 @@ if(HAVE_CLANG_THREAD_SAFETY)
     PUBLIC
       -Werror -Wthread-safety)
 endif(HAVE_CLANG_THREAD_SAFETY)
+
+
+target_compile_options(TimberSaw
+    PUBLIC
+    -libverbs)
 
 if(HAVE_CRC32C)
   target_link_libraries(TimberSaw crc32c)
