@@ -331,6 +331,13 @@ if(HAVE_CLANG_THREAD_SAFETY)
       -Werror -Wthread-safety)
 endif(HAVE_CLANG_THREAD_SAFETY)
 
+
+target_compile_options(TimberSaw
+    PUBLIC
+    -libverbs)
+
+add_link_options(-libverbs)
+
 if(HAVE_CRC32C)
   target_link_libraries(TimberSaw crc32c)
 endif(HAVE_CRC32C)
@@ -571,5 +578,3 @@ if(TimberSaw_INSTALL)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
   )
 endif(TimberSaw_INSTALL)
-
-add_compile_options(-libverbs)
