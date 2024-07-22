@@ -572,6 +572,4 @@ if(TimberSaw_INSTALL)
   )
 endif(TimberSaw_INSTALL)
 
-target_compile_options(TimberSaw
-    PUBLIC
-    -libverbs)
+add_compile_options(-libverbs)
