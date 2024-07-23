@@ -1873,6 +1873,17 @@ int RDMA_Manager::modify_qp_to_init(struct ibv_qp* qp) {
 ******************************************************************************/
 int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
                                    uint16_t dlid, uint8_t* dgid) {
+  struct ibv_qp_attr tattr;
+  struct ibv_qp_init_attr tinit_attr;
+  
+  if (ibv_query_qp(qp, &tattr,
+        IBV_QP_STATE, &tinit_attr)) {
+    fprintf(stderr, "Failed to query QP state\n");
+    return -1;
+  }
+
+  fprintf(stdout, "QP state is %d\n", tattr.qp_state);
+
   struct ibv_qp_attr attr;
   int flags;
   int rc;
