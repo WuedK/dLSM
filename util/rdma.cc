@@ -1900,6 +1900,10 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
   attr.ah_attr.src_path_bits = 0;
   attr.ah_attr.port_num = rdma_config.ib_port;
   if (rdma_config.gid_idx >= 0) {
+
+    fprintf(stdout, "Remote GID from modify to rtr = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+            dgid[0], dgid[1], dgid[2], dgid[3], dgid[4], dgid[5], dgid[6], dgid[7], dgid[8], dgid[9], dgid[10], dgid[11], dgid[12], dgid[13], dgid[14], dgid[15]);
+
     attr.ah_attr.is_global = 1;
     attr.ah_attr.port_num = 1;
     memcpy(&attr.ah_attr.grh.dgid, dgid, 16);
