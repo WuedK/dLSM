@@ -1873,16 +1873,16 @@ int RDMA_Manager::modify_qp_to_init(struct ibv_qp* qp) {
 ******************************************************************************/
 int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
                                    uint16_t dlid, uint8_t* dgid) {
-  struct ibv_qp_attr tattr;
-  struct ibv_qp_init_attr tinit_attr;
+  // struct ibv_qp_attr tattr;
+  // struct ibv_qp_init_attr tinit_attr;
   
-  if (ibv_query_qp(qp, &tattr,
-        IBV_QP_STATE, &tinit_attr)) {
-    fprintf(stderr, "Failed to query QP state\n");
-    return -1;
-  }
+  // if (ibv_query_qp(qp, &tattr,
+  //       IBV_QP_STATE, &tinit_attr)) {
+  //   fprintf(stderr, "Failed to query QP state\n");
+  //   return -1;
+  // }
 
-  fprintf(stdout, "QP state is %d\n", tattr.cur_qp_state);
+  // fprintf(stdout, "QP state is %d\n", tattr.cur_qp_state);
 
   struct ibv_qp_attr attr;
   int flags;
@@ -1900,13 +1900,7 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
   attr.ah_attr.src_path_bits = 0;
   attr.ah_attr.port_num = rdma_config.ib_port;
 
-  fprintf(stdout, "destination ib_port is %d\n", rdma_config.ib_port);
-
   if (rdma_config.gid_idx >= 0) {
-
-    fprintf(stdout, "Remote GID from modify to rtr = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
-            dgid[0], dgid[1], dgid[2], dgid[3], dgid[4], dgid[5], dgid[6], dgid[7], dgid[8], dgid[9], dgid[10], dgid[11], dgid[12], dgid[13], dgid[14], dgid[15]);
-
     attr.ah_attr.is_global = 1;
     attr.ah_attr.port_num = 1;
     memcpy(&attr.ah_attr.grh.dgid, dgid, 16);
