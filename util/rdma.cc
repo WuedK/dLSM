@@ -1882,7 +1882,7 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
     return -1;
   }
 
-  fprintf(stdout, "QP state is %d\n", tattr.qp_state);
+  fprintf(stdout, "QP state is %d\n", tattr.cur_qp_state);
 
   struct ibv_qp_attr attr;
   int flags;
