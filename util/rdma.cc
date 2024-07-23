@@ -1899,6 +1899,9 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
   attr.ah_attr.sl = 0;
   attr.ah_attr.src_path_bits = 0;
   attr.ah_attr.port_num = rdma_config.ib_port;
+
+  fprintf(stdout, "destination ib_port is %d\n", rdma_config.ib_port);
+
   if (rdma_config.gid_idx >= 0) {
 
     fprintf(stdout, "Remote GID from modify to rtr = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
