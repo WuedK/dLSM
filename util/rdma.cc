@@ -1893,7 +1893,7 @@ int RDMA_Manager::modify_qp_to_rtr(struct ibv_qp* qp, uint32_t remote_qpn,
   attr.dest_qp_num = remote_qpn;
   attr.rq_psn = 0;
   attr.max_dest_rd_atomic = 1;
-  attr.min_rnr_timer = 0xc;
+  attr.min_rnr_timer = 0xf;
   attr.ah_attr.is_global = 0;
   attr.ah_attr.dlid = dlid;
   attr.ah_attr.sl = 0;
