@@ -91,11 +91,11 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     uint8_t id;
     while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
       id = 2*i + 1;
-      rdma_mg->compute_nodes.insert({id, {connection_conf.substr(0, pos), -1}});
+      rdma_mg->compute_nodes.insert({id, std::make_pair(connection_conf.substr(0, pos), -1)});
       connection_conf.erase(0, pos + space_delimiter.length());
       i++;
     }
-    rdma_mg->compute_nodes.insert({2*i+1, {connection_conf, -1}});
+    rdma_mg->compute_nodes.insert({2*i+1, std::make_pair(connection_conf, -1)});
     assert((rdma_mg->node_id - 1)/2 <  rdma_mg->compute_nodes.size());
     i = 0;
     std::getline(myfile,connection_conf );
@@ -2061,7 +2061,7 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
   rdma_mg->Deallocate_Local_RDMA_Slot(edit_recv_mr.addr, Version_edit);
   delete request;
   }
-  
+
   void Memory_Node_Keeper::sst_garbage_collection(void* arg) {
       RDMA_Request* request = ((Arg_for_handler*)arg)->request;
       std::string client_ip = ((Arg_for_handler*)arg)->client_ip;
