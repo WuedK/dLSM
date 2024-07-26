@@ -1863,7 +1863,7 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
                                        iter.first)){
             // fprintf(stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.first);
             LOGFC(COLOR_YELLOW, stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.first);
-            iter.second.second = -1;
+            iter.second.second.store(-1);
             ++num_fail;
           }
 
@@ -2061,6 +2061,7 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
   rdma_mg->Deallocate_Local_RDMA_Slot(edit_recv_mr.addr, Version_edit);
   delete request;
   }
+  
   void Memory_Node_Keeper::sst_garbage_collection(void* arg) {
       RDMA_Request* request = ((Arg_for_handler*)arg)->request;
       std::string client_ip = ((Arg_for_handler*)arg)->client_ip;

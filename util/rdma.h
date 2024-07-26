@@ -41,6 +41,8 @@
 #include "ThreadPool.h"
 #include "mutexlock.h"
 
+#include "testlog.h"
+
 // #include <boost/lockfree/spsc_queue.hpp>
 #define _mm_clflush(addr)\
 	asm volatile("clflush %0" : "+m" (*(volatile char *)(addr)))
@@ -527,7 +529,7 @@ class RDMA_Manager {
 
   // the key is id for rdma communication, the value is the IP address -> the second part of value is status of the connection
   // if status is less than 0 there is a problem with the connection
-  std::map<uint8_t, std::pair<std::string, int>> compute_nodes{}; 
+  std::map<uint8_t, std::pair<std::string, std::atomic<int>>> compute_nodes{}; 
   std::map<uint8_t, std::string> memory_nodes{};
   std::atomic<uint64_t> connection_counter = 0;// Reuse by both compute nodes and memory nodes
   std::map<std::string, std::pair<ibv_cq*, ibv_cq*>> cq_map_Mside; /* CQ Map */
@@ -748,11 +750,16 @@ long int accumulated_time = 0;
       rc = ibv_post_recv(res->qp_map.at(target_node_id), &rr, &bad_wr);
       l.unlock();
     }
-//    if (rc)
-//#ifndef NDEBUG
-//      fprintf(stderr, "failed to post RR\n");
-//#endif
-//    else
+
+  #ifndef NDEBUG
+   if (rc)
+    LOGFC(COLOR_YELLOW, stderr, "post recieve of type <%s> failed for node %d.\n", qp_type, target_node_id);
+  #endif
+  // if(rc)
+// #ifndef NDEBUG
+    //  fprintf(stderr, "failed to post RR\n");
+// #endif
+  //  else
 //#ifndef NDEBUG
 //      fprintf(stdout, "Receive Request was posted\n");
 //#endif

@@ -740,6 +740,7 @@ void RDMA_Manager::remote_cpu_util_heart_beater_receiver(
   delete request;
 
 }
+
 void RDMA_Manager::ConnectQPThroughSocket(std::string qp_type, int socket_fd,
                                           uint8_t& target_node_id) {
 
@@ -830,6 +831,8 @@ void RDMA_Manager::ConnectQPThroughSocket(std::string qp_type, int socket_fd,
   if (connect_qp(qp, qp_type, target_node_id)) {
     fprintf(stderr, "failed to connect QPs\n");
   }
+
+  compute_nodes[target_node_id].second.store(0); // connection for this CNode is setup.
 
 }
 //    Register the memory through ibv_reg_mr on the local side. this function will be called by both of the server side and client side.
@@ -1076,11 +1079,11 @@ void RDMA_Manager::Client_Set_Up_Resources() {
   uint8_t id;
   while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
     id = 2*i + 1;
-    compute_nodes.insert({id, connection_conf.substr(0, pos)});
+    compute_nodes.insert({id, {connection_conf.substr(0, pos), -1}});
     connection_conf.erase(0, pos + space_delimiter.length());
     i++;
   }
-  compute_nodes.insert({2*i+1, connection_conf});
+  compute_nodes.insert({2*i+1, {connection_conf, -1}});
   assert((node_id - 1)/2 <  compute_nodes.size());
   i = 0;
   std::getline(myfile,connection_conf );
@@ -2182,6 +2185,12 @@ int RDMA_Manager::RDMA_Write(ibv_mr* remote_mr, ibv_mr* local_mr,
 int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
                              size_t msg_size, std::string qp_type,
                              size_t send_flag, int poll_num, uint8_t target_node_id) {
+    if (node_id % 2 == 0 && compute_nodes[target_node_id].second.load() < 0) {
+      LOGFC(COLOR_YELLOW, stderr, "RDMA_Write: Connection to CNode %d is broken.\n", target_node_id);
+      return -1;
+      // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
+    }
+
     //  auto start = std::chrono::high_resolution_clock::now();
     struct ibv_send_wr sr;
     struct ibv_sge sge;
@@ -2253,7 +2262,16 @@ int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
         std::cout << "RDMA Write Failed" << std::endl;
         std::cout << "q id is" << qp_type << std::endl;
         fprintf(stdout, "QP number=0x%x\n", res->qp_map[target_node_id]->qp_num);
-        exit(0);
+
+        // if we exit in memory node, all threads will be terminated making other compute nodes fail as well
+        if (node_id % 2 != 0) {
+          // compute node
+          exit(0);
+        }
+        else {
+          // memory node
+          compute_nodes[target_node_id].second.store(-1);
+        }
       }else{
         DEBUG("RDMA write successfully\n");
       }
