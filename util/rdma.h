@@ -525,7 +525,9 @@ class RDMA_Manager {
   std::map<uint8_t, uint32_t*> byte_len_map;
   std::map<uint8_t, std::condition_variable* > cv_imme_map;
 
-  std::map<uint8_t, std::string> compute_nodes{};
+  // the key is id for rdma communication, the value is the IP address -> the second part of value is status of the connection
+  // if status is less than 0 there is a problem with the connection
+  std::map<uint8_t, std::pair<std::string, int>> compute_nodes{}; 
   std::map<uint8_t, std::string> memory_nodes{};
   std::atomic<uint64_t> connection_counter = 0;// Reuse by both compute nodes and memory nodes
   std::map<std::string, std::pair<ibv_cq*, ibv_cq*>> cq_map_Mside; /* CQ Map */

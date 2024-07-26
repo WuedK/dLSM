@@ -1399,6 +1399,7 @@ bool RDMA_Manager::Get_Remote_qp_Info_Then_Connect(uint8_t target_node_id) {
   compute_message_handling_thread(qp_type, target_node_id);
   return false;
 }
+
 void RDMA_Manager::sync_with_computes_Cside() {
   char temp_receive[2];
   char temp_send[] = "Q";
@@ -1410,6 +1411,7 @@ void RDMA_Manager::sync_with_computes_Cside() {
   auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
   printf("sync wait time is %ld\n", duration.count());
 }
+
 ibv_mr* RDMA_Manager::Get_local_read_mr() {
   ibv_mr* ret;
   ret = (ibv_mr*)read_buffer->Get();
@@ -1423,13 +1425,14 @@ ibv_mr* RDMA_Manager::Get_local_read_mr() {
   }
   return ret;
 }
+
 void RDMA_Manager::sync_with_computes_Mside() {
   char buffer[100];
   int number_of_ready = 0;
   uint64_t rc = 0;
 
   int consecutive_miss_receive_data = 0;
-  while (1){
+  // while (1){
     for(auto iter : res->sock_map){
       rc =read(iter.second, buffer, 100);
       if(rc != 0){
@@ -1468,10 +1471,9 @@ void RDMA_Manager::sync_with_computes_Mside() {
       }
     }
 
-  }
-
-
+  // }
 }
+
 void RDMA_Manager::broadcast_to_computes(){
   int rc = 0;
   int read_bytes = 0;
