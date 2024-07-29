@@ -91,11 +91,11 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     uint8_t id;
     while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
       id = 2*i + 1;
-      rdma_mg->compute_nodes[id] = RDMA_Manager::compute_node_ip_and_status(connection_conf.substr(0, pos));
+      rdma_mg->compute_nodes.try_emplace(id, connection_conf.substr(0, pos));
       connection_conf.erase(0, pos + space_delimiter.length());
       i++;
     }
-    rdma_mg->compute_nodes[2*i + 1] = RDMA_Manager::compute_node_ip_and_status(connection_conf);
+    rdma_mg->compute_nodes.try_emplace(2*i + 1, connection_conf);
     assert((rdma_mg->node_id - 1)/2 <  rdma_mg->compute_nodes.size());
     i = 0;
     std::getline(myfile,connection_conf );
