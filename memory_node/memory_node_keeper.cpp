@@ -91,11 +91,11 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     uint8_t id;
     while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
       id = 2*i + 1;
-      rdma_mg->compute_nodes[id] = std::make_pair<std::string, std::atomic<int>>(connection_conf.substr(0, pos), -1);
+      rdma_mg->compute_nodes.insert({id, compute_node_ip_and_status(connection_conf.substr(0, pos))});
       connection_conf.erase(0, pos + space_delimiter.length());
       i++;
     }
-    rdma_mg->compute_nodes[2*i + 1] = std::make_pair<std::string, std::atomic<int>>(connection_conf, -1);
+    rdma_mg->compute_nodes.insert({2*i + 1, compute_node_ip_and_status(connection_conf)});
     assert((rdma_mg->node_id - 1)/2 <  rdma_mg->compute_nodes.size());
     i = 0;
     std::getline(myfile,connection_conf );
@@ -1834,9 +1834,9 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
 
         int num_fail = 0;
 
-        for (int i = 0; i < rdma_mg->compute_nodes.size(); ++i) {
+        for (auto iter : rdma_mg->compute_nodes) {
           // register the memory block from the remote memory
-          if (rdma_mg->compute_nodes[i].second.first < 0) {
+          if (iter.second.status.load() < 0) {
             ++num_fail;
             continue;
           }
@@ -1857,13 +1857,12 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
 //#endif
 
 
-          rdma_mg->post_send<RDMA_Request>(&send_mr, rdma_mg->compute_nodes[i].first, std::string("main"));
+          rdma_mg->post_send<RDMA_Request>(&send_mr, iter.first, std::string("main"));
           ibv_wc wc[2] = {};
-          if (rdma_mg->poll_completion(wc, 1, std::string("main"), true,
-                                       rdma_mg->compute_nodes[i].first)){
+          if (rdma_mg->poll_completion(wc, 1, std::string("main"), true, iter.first)){
             // fprintf(stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.first);
-            LOGFC(COLOR_YELLOW, stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", rdma_mg->compute_nodes[i].first, rdma_mg->compute_nodes[i].second.first);
-            rdma_mg->compute_nodes[i].second.second.store(-1);
+            LOGFC(COLOR_YELLOW, stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.ip);
+            iter.second.status.store(-1);
             ++num_fail;
           }
 

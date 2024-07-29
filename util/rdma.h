@@ -529,7 +529,13 @@ class RDMA_Manager {
 
   // the key is id for rdma communication, the value is the IP address -> the second part of value is status of the connection
   // if status is less than 0 there is a problem with the connection
-  std::map<uint8_t, std::pair<std::string, std::atomic<int>>> compute_nodes{}; 
+  struct compute_node_ip_and_status {
+    compute_node_ip_and_status(const std::string& ip_add) : ip(ip_add), status(-1) {}
+    std::string ip;
+    std::atomic<int> status;
+  };
+
+  std::map<uint8_t, compute_node_ip_and_status> compute_nodes{}; 
   std::map<uint8_t, std::string> memory_nodes{};
   std::atomic<uint64_t> connection_counter = 0;// Reuse by both compute nodes and memory nodes
   std::map<std::string, std::pair<ibv_cq*, ibv_cq*>> cq_map_Mside; /* CQ Map */
