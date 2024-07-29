@@ -1834,9 +1834,9 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
 
         int num_fail = 0;
 
-        for (auto iter : rdma_mg->compute_nodes) {
+        for (int i = 0; i < rdma_mg->compute_nodes.size(); ++i) {
           // register the memory block from the remote memory
-          if (iter.second.first < 0) {
+          if (rdma_mg->compute_nodes[i].second.first < 0) {
             ++num_fail;
             continue;
           }
@@ -1857,13 +1857,13 @@ int Memory_Node_Keeper::server_sock_connect(const char* servername, int port) {
 //#endif
 
 
-          rdma_mg->post_send<RDMA_Request>(&send_mr, iter.first, std::string("main"));
+          rdma_mg->post_send<RDMA_Request>(&send_mr, rdma_mg->compute_nodes[i].first, std::string("main"));
           ibv_wc wc[2] = {};
           if (rdma_mg->poll_completion(wc, 1, std::string("main"), true,
-                                       iter.first)){
+                                       rdma_mg->compute_nodes[i].first)){
             // fprintf(stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.first);
-            LOGFC(COLOR_YELLOW, stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", iter.first, iter.second.first);
-            iter.second.second.store(-1);
+            LOGFC(COLOR_YELLOW, stderr, "failed to poll send for remote memory register in cpu util heart beater for CNode %d:%s\n", rdma_mg->compute_nodes[i].first, rdma_mg->compute_nodes[i].second.first);
+            rdma_mg->compute_nodes[i].second.second.store(-1);
             ++num_fail;
           }
 
