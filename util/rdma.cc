@@ -1079,11 +1079,11 @@ void RDMA_Manager::Client_Set_Up_Resources() {
   uint8_t id;
   while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
     id = 2*i + 1;
-    compute_nodes[id] = std::pair<std::string, std::atomic<int>>(connection_conf.substr(0, pos), -1);
+    compute_nodes[id] = std::make_pair<std::string, std::atomic<int>>(connection_conf.substr(0, pos), -1);
     connection_conf.erase(0, pos + space_delimiter.length());
     i++;
   }
-  compute_nodes[2*i+1] = std::pair<std::string, std::atomic<int>>(connection_conf, -1);
+  compute_nodes[2*i+1] = std::make_pair<std::string, std::atomic<int>>(connection_conf, -1);
   assert((node_id - 1)/2 <  compute_nodes.size());
   i = 0;
   std::getline(myfile,connection_conf );
