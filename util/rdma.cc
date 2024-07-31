@@ -832,7 +832,7 @@ void RDMA_Manager::ConnectQPThroughSocket(std::string qp_type, int socket_fd,
     fprintf(stderr, "failed to connect QPs\n");
   }
 
-  compute_nodes[target_node_id].status.store(0); // connection for this CNode is setup.
+  compute_nodes_status[target_node_id].store(0); // connection for this CNode is setup.
 
 }
 //    Register the memory through ibv_reg_mr on the local side. this function will be called by both of the server side and client side.
@@ -1080,10 +1080,12 @@ void RDMA_Manager::Client_Set_Up_Resources() {
   while ((pos = connection_conf.find(space_delimiter)) != std::string::npos) {
     id = 2*i + 1;
     rdma_mg->compute_nodes.try_emplace(id, connection_conf.substr(0, pos));
+    rdma_mg->compute_nodes_status.try_emplace(id, -1);
     connection_conf.erase(0, pos + space_delimiter.length());
     i++;
   }
   rdma_mg->compute_nodes.try_emplace(2*i+1, connection_conf);
+  rdma_mg->compute_nodes_status.try_emplace(2*i+1, -1);
   assert((node_id - 1)/2 <  compute_nodes.size());
   i = 0;
   std::getline(myfile,connection_conf );
@@ -2185,7 +2187,7 @@ int RDMA_Manager::RDMA_Write(ibv_mr* remote_mr, ibv_mr* local_mr,
 int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
                              size_t msg_size, std::string qp_type,
                              size_t send_flag, int poll_num, uint8_t target_node_id) {
-    if (node_id % 2 == 0 && compute_nodes[target_node_id].status.load() < 0) {
+    if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
       LOGFC(COLOR_YELLOW, stderr, "RDMA_Write: Connection to CNode %d is broken.\n", target_node_id);
       return -1;
       // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
@@ -2270,7 +2272,7 @@ int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
         }
         else {
           // memory node
-          compute_nodes[target_node_id].status.store(-1);
+          compute_nodes_status[target_node_id].store(-1);
         }
       }else{
         DEBUG("RDMA write successfully\n");
