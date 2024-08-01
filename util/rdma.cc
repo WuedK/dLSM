@@ -932,7 +932,7 @@ void RDMA_Manager::Memory_Deallocation_RPC(uint8_t target_node_id,
                                            Chunk_type c_type) {
   if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
     LOGFC(COLOR_YELLOW, stderr, "Memory_Deallocation_RPC: Connection to CNode %d is broken.\n", target_node_id);
-    return -1;
+    return;
     // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
   }
 //  printf("Send garbage collection RPC\n");
