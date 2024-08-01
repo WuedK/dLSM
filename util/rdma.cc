@@ -930,6 +930,11 @@ bool RDMA_Manager::Remote_Memory_Deallocation_Fetch_Buff(uint64_t** ptr,
 }
 void RDMA_Manager::Memory_Deallocation_RPC(uint8_t target_node_id,
                                            Chunk_type c_type) {
+  if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
+    LOGFC(COLOR_YELLOW, stderr, "Memory_Deallocation_RPC: Connection to CNode %d is broken.\n", target_node_id);
+    return -1;
+    // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
+  }
 //  printf("Send garbage collection RPC\n");
   RDMA_Request* send_pointer;
   ibv_mr send_mr = {};
@@ -967,7 +972,17 @@ void RDMA_Manager::Memory_Deallocation_RPC(uint8_t target_node_id,
     printf("Reply buffer is %p", receive_pointer->buffer);
     printf("Received is %d", receive_pointer->received);
     printf("receive structure size is %lu", sizeof(RDMA_Reply));
-    exit(0);
+    // if we exit in memory node, all threads will be terminated making other compute nodes fail as well
+    if (node_id % 2 != 0) {
+      // compute node
+      std::cout << "CNode: Memory_Deallocation_RPC Failed for MNode" << target_node_id << std::endl;
+      exit(0);
+    }
+    else {
+      // memory node
+      std::cout << "MemoryNode: Memory_Deallocation_RPC Failed for CNode" << target_node_id << std::endl;
+      compute_nodes_status[target_node_id].store(-1);
+    }
   }
   //  end = std::chrono::high_resolution_clock::now();
   //  duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -1996,6 +2011,12 @@ End of socket operations
 int RDMA_Manager::RDMA_Read(ibv_mr* remote_mr, ibv_mr* local_mr,
                             size_t msg_size, std::string qp_type,
                             size_t send_flag, int poll_num, uint8_t target_node_id) {
+
+  if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
+    LOGFC(COLOR_YELLOW, stderr, "RDMA_Read: Connection to CNode %d is broken.\n", target_node_id);
+    return -1;
+    // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
+  }
 //#ifdef GETANALYSIS
 //  auto start = std::chrono::high_resolution_clock::now();
 //#endif
@@ -2063,7 +2084,17 @@ int RDMA_Manager::RDMA_Read(ibv_mr* remote_mr, ibv_mr* local_mr,
 
   if (rc) {
     fprintf(stderr, "failed to post SR %s \n", qp_type.c_str());
-    exit(1);
+    // if we exit in memory node, all threads will be terminated making other compute nodes fail as well
+    if (node_id % 2 != 0) {
+      // compute node
+      std::cout << "RDMA Read Failed" << std::endl;
+      exit(0);
+    }
+    else {
+      // memory node
+      std::cout << "Memory Node: RDMA Read failed from CNode " << target_node_id << std::endl;
+      compute_nodes_status[target_node_id].store(-1);
+    }
 
   } else {
     //      printf("qid: %s", q_id.c_str());
@@ -2105,6 +2136,11 @@ int RDMA_Manager::RDMA_Read(ibv_mr* remote_mr, ibv_mr* local_mr,
 int RDMA_Manager::RDMA_Write(ibv_mr* remote_mr, ibv_mr* local_mr,
                              size_t msg_size, std::string qp_type,
                              size_t send_flag, int poll_num, uint8_t target_node_id) {
+  if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
+    LOGFC(COLOR_YELLOW, stderr, "RDMA_Write: Connection to CNode %d is broken.\n", target_node_id);
+    return -1;
+    // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
+  }
   //  auto start = std::chrono::high_resolution_clock::now();
   struct ibv_send_wr sr;
   struct ibv_sge sge;
@@ -2173,10 +2209,19 @@ int RDMA_Manager::RDMA_Write(ibv_mr* remote_mr, ibv_mr* local_mr,
     // wait until the job complete.
     rc = poll_completion(wc, poll_num, qp_type, true, 0);
     if (rc != 0) {
-      std::cout << "RDMA Write Failed" << std::endl;
+      std::cout << "RDMA Write Failed to node" << target_node_id << std::endl;
       std::cout << "q id is" << qp_type << std::endl;
       fprintf(stdout, "QP number=0x%x\n", res->qp_map[target_node_id]->qp_num);
-      exit(0);
+      // if we exit in memory node, all threads will be terminated making other compute nodes fail as well
+      if (node_id % 2 != 0) {
+        // compute node
+        exit(0);
+      }
+      else {
+        // memory node
+        std::cout << "Memory Node" << std::endl;
+        compute_nodes_status[target_node_id].store(-1);
+      }
     }
     delete[] wc;
   }
@@ -2261,7 +2306,7 @@ int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
       // wait until the job complete.
       rc = poll_completion(wc, poll_num, qp_type, true, target_node_id);
       if (rc != 0) {
-        std::cout << "RDMA Write Failed" << std::endl;
+        std::cout << "RDMA Write Failed to node " << target_node_id << std::endl;
         std::cout << "q id is" << qp_type << std::endl;
         fprintf(stdout, "QP number=0x%x\n", res->qp_map[target_node_id]->qp_num);
 
@@ -2272,6 +2317,7 @@ int RDMA_Manager::RDMA_Write(void* addr, uint32_t rkey, ibv_mr* local_mr,
         }
         else {
           // memory node
+          std::cout << "Memory Node" << std::endl;
           compute_nodes_status[target_node_id].store(-1);
         }
       }else{
@@ -2289,6 +2335,12 @@ int RDMA_Manager::RDMA_Write_Imme(void* addr, uint32_t rkey, ibv_mr* local_mr,
                                   size_t send_flag, int poll_num,
                                   unsigned int imme, uint8_t target_node_id) {
   //  auto start = std::chrono::high_resolution_clock::now();
+  if (node_id % 2 == 0 && compute_nodes_status[target_node_id].load() < 0) {
+    LOGFC(COLOR_YELLOW, stderr, "RDMA_Write_Imme: Connection to CNode %d is broken.\n", target_node_id);
+    return -1;
+    // we may need to modify Remote_Query_Pair_Connection if it is executed in memory node but for now I assume that only the compute nodes execute it
+  }
+
   struct ibv_send_wr sr;
   struct ibv_sge sge;
   struct ibv_send_wr* bad_wr = NULL;
@@ -2358,10 +2410,19 @@ int RDMA_Manager::RDMA_Write_Imme(void* addr, uint32_t rkey, ibv_mr* local_mr,
     // wait until the job complete.
     rc = poll_completion(wc, poll_num, qp_type, true, target_node_id);
     if (rc != 0) {
-      std::cout << "RDMA Write Failed" << std::endl;
+      std::cout << "RDMA Write_Imme Failed to Node " << target_node_id << std::endl;
       std::cout << "q id is" << qp_type << std::endl;
       fprintf(stdout, "QP number=0x%x\n", res->qp_map[target_node_id]->qp_num);
-      exit(0);
+      // if we exit in memory node, all threads will be terminated making other compute nodes fail as well
+      if (node_id % 2 != 0) {
+        // compute node
+        exit(0);
+      }
+      else {
+        // memory node
+        std::cout << "Memory Node" << std::endl;
+        compute_nodes_status[target_node_id].store(-1);
+      }
     }else{
       DEBUG("RDMA write successfully\n");
     }
