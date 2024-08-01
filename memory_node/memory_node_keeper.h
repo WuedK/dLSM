@@ -13,6 +13,7 @@
 #include "util/ThreadPool.h"
 #include "db/log_writer.h"
 #include "db/version_set.h"
+#include "load_balancer.h"
 
 namespace TimberSaw {
 
@@ -174,6 +175,8 @@ class Memory_Node_Keeper {
   std::atomic<bool> check_point_t_ready = true;
   std::mutex merger_mtx;
 //  std::mutex test_compaction_mutex;
+
+  Load_Balancer load_balancer;
 #ifndef NDEBUG
   std::atomic<size_t> debug_counter = 0;
 
