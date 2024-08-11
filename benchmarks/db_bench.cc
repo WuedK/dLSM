@@ -1281,9 +1281,7 @@ class Benchmark {
       for (int j = 0; j < entries_per_batch_; j++) {
         //The key range should be adjustable.
 //        const int k = seq ? i + j : thread->rand.Uniform(FLAGS_num*FLAGS_threads);
-        const int k = (seq ? i + j : thread->rand.Next());
-        
-        k = k % (node_upper_bound - node_lower_bound) + node_lower_bound
+        const int k = (seq ? i + j : thread->rand.Next()) % (node_upper_bound - node_lower_bound) + node_lower_bound;
 
 //        key.Set(k);
         GenerateKeyFromInt(k, &key);
