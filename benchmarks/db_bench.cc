@@ -1134,7 +1134,7 @@ class Benchmark {
       uint64_t key_remaining = number_of_remainder_keys - std::min(number_of_remainder_keys, num_past_shards);
 
       node_lower_bound += num_past_shards * number_of_key_per_shard 
-        + std::min(number_of_remainder_keys, num_past_shards)
+        + std::min(number_of_remainder_keys, num_past_shards);
 
       options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
       // number_of_key_per_shard = number_of_key_per_compute
