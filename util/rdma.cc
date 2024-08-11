@@ -1086,7 +1086,7 @@ void RDMA_Manager::Client_Set_Up_Resources() {
   std::string connection_conf;
   size_t pos = 0;
   std::ifstream myfile;
-  myfile.open (config_file_name, std::ios_base::in);
+  myfile.open (conn_config_file_name, std::ios_base::in);
   std::string space_delimiter = " ";
 
   std::getline(myfile,connection_conf );
@@ -1112,6 +1112,9 @@ void RDMA_Manager::Client_Set_Up_Resources() {
   }
   memory_nodes.insert({2*i, connection_conf});
   i++;
+
+  myfile.close();
+
   Initialize_threadlocal_map();
 //  std::string ip_add;
 //  std::cout << "please insert the ip address for the remote memory" << std::endl;

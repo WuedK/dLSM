@@ -5,6 +5,7 @@
 #ifndef TimberSaw_LOAD_BALANCER_H
 #define TimberSaw_LOAD_BALANCER_H
 
+#include <stdio.h>
 #include <stdint.h>
 #include <map>
 #include <set>
@@ -12,53 +13,77 @@
 
 namespace TimberSaw {
 
-template <typename T>
-struct Timed_Data {
-    std::vector<T> data;
+// class Timed_Data {
+//     static constexpr size_t time_level = 5;
+//     static constexpr double ratio[time_level] = {0.5, 0.2, 0.15, 0.1, 0.05};
 
-    void pass(); // passes time
+//     size_t data[time_level];
 
-};
+//     void pass() {
+//         for (int i = (time_level - 1); i >= 1; ++i) {
+//             data[i] = data[i-1];
+//         }
+//         data[0] = 0;
+//     }
+
+//     void increment(size_t amount) {
+//         data[0] += amount;
+//     }
+
+//     void update(size_t new_val) {
+//         data[0] = new_val;
+//     }
+
+//     size_t overal_value() {
+//         size_t res = 0;
+//         for (int i = 0; i < time_level; ++i) {
+//             res += (size_t)(std::floor(ratio[i] * data[i]));
+//         }
+//         return res;
+//     }
+
+//     size_t& operator[](size_t idx) {
+//         if (idx < 0 || idx >= time_level)
+//             throw std::out_of_range();
+//         return data[idx];
+//     }
+// };
 
 struct Load_Info {
 
+    static constexpr size_t local_read_time = 0;
     static constexpr size_t remote_read_time = 0;
+    static constexpr size_t local_write_time = 0;
     static constexpr size_t flush_time = 0;
+    static constexpr size_t mem_table_cap_mb = 64;
 
-    size_t local_read_time = 0; // ?
-    size_t local_write_time = 0; // ?
+    size_t num_reads, num_writes, num_remote_reads;
+    // size_t num_files;
+    // size_t size_MB;
 
-    Timed_Data<size_t> num_reads, num_writes;
-    size_t num_files;
-    size_t size_MB;
-
-    size_t num_cached_files;
-    size_t cached_size_MB;
+    // size_t num_cached_files;
+    // size_t cached_size_MB;
 
     size_t last_load = 0;
-
-    size_t compute_load() {
-        // computes the current load and sets last_load to it -> then retuns the new load
-    }
 };
 
 struct Shard_Info {
+    uint8_t owner;
     size_t id;
     Load_Info load;
-    uint8_t owner;
 
-    // Range()?
+    // std::string from, to;
 };
 
 struct Compute_Node_Info {
-    std::set<Shard_Info*> shards;
+    std::set<size_t> shards;
     Load_Info overal_load;
     uint8_t node_id;
 };
 
 class Load_Balancer {
 public:
-    Load_Balancer();
+    Load_Balancer(size_t num_shards, size_t num_compute, );
     ~Load_Balancer();
     void start(); // runs a thread which periodically does load balancing and then sleeps
     std::map<uint8_t, Compute_Node_Info>* new_bindings(); // returns a new ownership map -> will replace compute_node_info when ready

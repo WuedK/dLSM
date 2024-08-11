@@ -69,6 +69,9 @@ static const char* FLAGS_benchmarks =
     "snappycomp,"
     "snappyuncomp,";
 
+// Maximum possible value for key
+static int FLAGS_max_key = 100000000;
+
 // A argument setting the range of key-value pair generated
 // Real inserted number per thread = FLAGS_num by default.
 static int FLAGS_num = 1000000;
@@ -147,14 +150,24 @@ static const char* FLAGS_db = nullptr;
 static int FLAGS_readwritepercent = 90;
 static int FLAGS_ops_between_duration_checks = 2000;
 static int FLAGS_duration = 0;
+
+
+static char db_config_file_name[100] = "../db.conf";
+
+
 namespace TimberSaw {
 
 namespace {
 TimberSaw::Env* g_env = nullptr;
 TimberSaw::RDMA_Manager* rdma_mg = nullptr;
+uint64_t total_number_of_shards;
 uint64_t number_of_key_total;
-uint64_t number_of_key_per_compute;
+// uint64_t number_of_key_per_compute;
+uint64_t number_of_remainder_keys;
 uint64_t number_of_key_per_shard;
+unit64_t node_lower_bound;
+unit64_t node_upper_bound;
+
 class Duration {
  public:
   Duration(uint64_t max_seconds, int64_t max_ops, int64_t ops_per_stage = 0) {
@@ -1094,63 +1107,86 @@ class Benchmark {
 #endif
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
-    //
-    rdma_mg = Env::Default()->rdma_mg.get();
-    //TODO: Keep every compute node have 100 million key range
-        number_of_key_total = FLAGS_num*FLAGS_threads*rdma_mg->compute_nodes.size(); // whole range.
-        number_of_key_per_compute = FLAGS_num*FLAGS_threads;
 
-//    number_of_key_total = FLAGS_num*FLAGS_threads; // whole range.
-//    number_of_key_per_compute =
-//        number_of_key_total /rdma_mg->compute_nodes.size();
+    number_of_key_total = FLAGS_max_key;
+    node_lower_bound = 0;
+    node_upper_bound = FLAGS_max_key;
+    rdma_mg = Env::Default()->rdma_mg.get();
+
+    if (rdma_mg->memory_nodes.size()> 1 && FLAGS_fixed_compute_shards_num < rdma_mg->memory_nodes.size()) {
+      FLAGS_fixed_compute_shards_num = rdma_mg->memory_nodes.size();
+    }
 
     if (FLAGS_fixed_compute_shards_num > 0){
+
+      // number_of_key_total = FLAGS_num*FLAGS_threads*rdma_mg->compute_nodes.size(); // whole range.
+      // number_of_key_per_compute = FLAGS_num*FLAGS_threads;
+      total_number_of_shards = rdma_mg->compute_nodes.size() * FLAGS_fixed_compute_shards_num;
+      number_of_key_per_shard = number_of_key_total / total_number_of_shards;
+      number_of_remainder_keys = number_of_key_total % total_number_of_shards;
+
+      uint64_t num_past_shards = ((rdma_mg->node_id - 1) / 2) * FLAGS_fixed_compute_shards_num;
+
+      uint64_t key_remaining = number_of_remainder_keys - std::min(number_of_remainder_keys, num_past_shards);
+
+      node_lower_bound = num_past_shards * number_of_key_per_shard 
+        + std::min(number_of_remainder_keys, num_past_shards)
+
       options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
-      number_of_key_per_shard = number_of_key_per_compute
-                                /FLAGS_fixed_compute_shards_num;
+      // number_of_key_per_shard = number_of_key_per_compute
+      //                           /FLAGS_fixed_compute_shards_num;
       for (int i = 0; i < FLAGS_fixed_compute_shards_num; ++i) {
+        unit64_t lower_bound = node_lower_bound;
+
         char* data_low = new char[FLAGS_key_size];
         char* data_up = new char[FLAGS_key_size];
         Slice key_low  = Slice(data_low, FLAGS_key_size);
         Slice key_up  = Slice(data_up, FLAGS_key_size);
-        uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-                               + i*number_of_key_per_shard;
-        uint64_t upper_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-                               + (i+1)*number_of_key_per_shard;
+        // uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
+        //                        + i*number_of_key_per_shard;
+        node_upper_bound = lower_bound + number_of_key_per_shard + (key_remaining > 0);
+        key_remaining -= (key_remaining > 0);
+
         //in case that the number_of_key_per_shard is rounded down.
-        if (i == FLAGS_fixed_compute_shards_num-1){
-          upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
-        }
+        // if (i == FLAGS_fixed_compute_shards_num-1){
+        //   upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
+        // }
         GenerateKeyFromInt(lower_bound, &key_low);
-        GenerateKeyFromInt(upper_bound, &key_up);
+        GenerateKeyFromInt(node_upper_bound, &key_up);
         options.ShardInfo->emplace_back(key_low,key_up);
+        lower_bound = node_upper_bound;
       }
-    }else if (rdma_mg->memory_nodes.size()> 1){
-      options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
-      number_of_key_per_shard = number_of_key_per_compute
-                                /rdma_mg->memory_nodes.size();
-      for (int i = 0; i < rdma_mg->memory_nodes.size(); ++i) {
-        char* data_low = new char[FLAGS_key_size];
-        char* data_up = new char[FLAGS_key_size];
-        Slice key_low  = Slice(data_low, FLAGS_key_size);
-        Slice key_up  = Slice(data_up, FLAGS_key_size);
-        uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-                               + i*number_of_key_per_shard;
-        uint64_t upper_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-                               + (i+1)*number_of_key_per_shard;
-        if (i == rdma_mg->memory_nodes.size()-1){
-          // in case that the number_of_key_pershard round down.
-          upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
-        }
-        GenerateKeyFromInt(lower_bound, &key_low);
-        GenerateKeyFromInt(upper_bound, &key_up);
-        options.ShardInfo->emplace_back(key_low,key_up);
-      }
-
-
-
-
     }
+    // else if (rdma_mg->memory_nodes.size()> 1){
+
+    //   rdma_mg = Env::Default()->rdma_mg.get();
+    //   // number_of_key_total = FLAGS_num*FLAGS_threads*rdma_mg->compute_nodes.size(); // whole range.
+    //   // number_of_key_per_compute = FLAGS_num*FLAGS_threads;
+    //   number_of_shards = rdma_mg->compute_nodes.size() * FLAGS_fixed_compute_shards_num;
+    //   number_of_key_per_shard = number_of_key_total / number_of_shards;
+    //   number_of_remainder_keys = number_of_key_total / number_of_shards;
+
+    //   options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
+    //   number_of_key_per_shard = number_of_key_per_compute
+    //                             /rdma_mg->memory_nodes.size();
+    //   for (int i = 0; i < rdma_mg->memory_nodes.size(); ++i) {
+    //     char* data_low = new char[FLAGS_key_size];
+    //     char* data_up = new char[FLAGS_key_size];
+    //     Slice key_low  = Slice(data_low, FLAGS_key_size);
+    //     Slice key_up  = Slice(data_up, FLAGS_key_size);
+    //     uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
+    //                            + i*number_of_key_per_shard;
+    //     uint64_t upper_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
+    //                            + (i+1)*number_of_key_per_shard;
+    //     if (i == rdma_mg->memory_nodes.size()-1){
+    //       // in case that the number_of_key_pershard round down.
+    //       upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
+    //     }
+    //     GenerateKeyFromInt(lower_bound, &key_low);
+    //     GenerateKeyFromInt(upper_bound, &key_up);
+    //     options.ShardInfo->emplace_back(key_low,key_up);
+    //   }
+    // }
 
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
@@ -1238,7 +1274,9 @@ class Benchmark {
       for (int j = 0; j < entries_per_batch_; j++) {
         //The key range should be adjustable.
 //        const int k = seq ? i + j : thread->rand.Uniform(FLAGS_num*FLAGS_threads);
-        const int k = seq ? i + j : thread->rand.Next()%(FLAGS_num*FLAGS_threads);
+        const int k = (seq ? i + j : thread->rand.Next());
+        
+        k = k % (node_upper_bound - node_lower_bound) + node_lower_bound
 
 //        key.Set(k);
         GenerateKeyFromInt(k, &key);
@@ -1279,12 +1317,13 @@ class Benchmark {
         //The key range should be adjustable.
         //        const int k = seq ? i + j : thread->rand.Uniform(FLAGS_num*FLAGS_threads);
 //        const int k = seq ? i + j : thread->rand.Next()%(number_of_key_per_compute);
-        const int k = seq ? i + j : thread->rand.Uniform(number_of_key_per_compute);
+        const int k = seq ? (i + j) % (node_upper_bound - node_lower_bound) 
+          : thread->rand.Uniform(node_upper_bound - node_lower_bound);
 
 
         //        key.Set(k);
         GenerateKeyFromInt(
-            k + shard_number_among_computes * number_of_key_per_compute, &key);
+            k + node_lower_bound, &key);
         //        batch.Put(key.slice(), gen.Generate(value_size_));
         batch.Put(key, gen.Generate(value_size_));
         //        bytes += value_size_ + key.slice().size();
@@ -1349,7 +1388,7 @@ class Benchmark {
 //#endif
     while(i < reads_){
       //      const int k = thread->rand.Uniform(FLAGS_num*FLAGS_threads);// make it uniform as write.
-      int k_start = thread->rand.Next()%(FLAGS_num*FLAGS_threads - range_length); //do not go out of bound
+      int k_start = thread->rand.Next()%(node_upper_bound - node_lower_bound - range_length) + node_lower_bound; //do not go out of bound
 //      int k_end = thread->rand.Next()%(FLAGS_num*FLAGS_threads);
       int k_end = k_start + range_length;
       //TODO: directly use k_start + some value as k_end;
@@ -1396,7 +1435,7 @@ class Benchmark {
     Slice key = AllocateKey(&key_guard);
     for (int i = 0; i < reads_; i++) {
 //      const int k = thread->rand.Uniform(FLAGS_num*FLAGS_threads);// make it uniform as write.
-      const int k = thread->rand.Next()%(FLAGS_num*FLAGS_threads);
+      const int k = thread->rand.Next()%(node_upper_bound - node_lower_bound) + node_lower_bound;
 //
 //            key.Set(k);
       GenerateKeyFromInt(k, &key);
@@ -1421,15 +1460,14 @@ class Benchmark {
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
 //    int total_number_of_inserted_key = FLAGS_num*FLAGS_threads;
-    uint64_t shard_number_among_computes = (RDMA_Manager::node_id - 1)/2;
+    // uint64_t shard_number_among_computes = (RDMA_Manager::node_id - 1)/2;
     for (int i = 0; i < reads_; i++) {
       //      const int k = thread->rand.Uniform(FLAGS_num*FLAGS_threads);// make it uniform as write.
 //      const int k = thread->rand.Next()%(number_of_key_per_compute);
-      const int k = thread->rand.Uniform(number_of_key_per_compute);
+      const int k = thread->rand.Uniform(node_upper_bound - node_lower_bound);
       //
       //            key.Set(k);
-      GenerateKeyFromInt(k + shard_number_among_computes * number_of_key_per_compute,
-                         &key);
+      GenerateKeyFromInt(k + node_lower_bound, &key);
       //      if (db_->Get(options, key.slice(), &value).ok()) {
       //        found++;
       //      }
@@ -1462,7 +1500,7 @@ class Benchmark {
     // the number of iterations is the larger of read_ or write_
     while (!duration.Done(1)) {
 //      DB* db = SelectDB(thread);
-GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
+GenerateKeyFromInt(thread->rand.Next() % (node_upper_bound - node_lower_bound) + node_lower_bound, &key);
       if (get_weight == 0 && put_weight == 0) {
         // one batch completed, reinitialize for next batch
         get_weight = FLAGS_readwritepercent;
@@ -1514,7 +1552,7 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
     std::string value;
     KeyBuffer key;
     for (int i = 0; i < reads_; i++) {
-      const int k = thread->rand.Uniform(FLAGS_num);
+      const int k = thread->rand.Uniform(node_upper_bound - node_lower_bound) + node_lower_bound;
       key.Set(k);
       Slice s = Slice(key.slice().data(), key.slice().size() - 1);
       db_->Get(options, s, &value);
@@ -1525,10 +1563,10 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
   void ReadHot(ThreadState* thread) {
     ReadOptions options;
     std::string value;
-    const int range = (FLAGS_num + 99) / 100;
+    const int range = ((node_upper_bound - node_lower_bound) + 99) / 100;
     KeyBuffer key;
     for (int i = 0; i < reads_; i++) {
-      const int k = thread->rand.Uniform(range);
+      const int k = thread->rand.Uniform(range) + node_lower_bound;
       key.Set(k);
       db_->Get(options, key.slice(), &value);
       thread->stats.FinishedSingleOp();
@@ -1541,7 +1579,7 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
     KeyBuffer key;
     for (int i = 0; i < reads_; i++) {
       Iterator* iter = db_->NewIterator(options);
-      const int k = thread->rand.Uniform(FLAGS_num);
+      const int k = thread->rand.Uniform(node_upper_bound - node_lower_bound) + node_lower_bound;
       key.Set(k);
       iter->Seek(key.slice());
       if (iter->Valid() && iter->key() == key.slice()) found++;
@@ -1557,10 +1595,13 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
     ReadOptions options;
     Iterator* iter = db_->NewIterator(options);
     int found = 0;
-    int k = 0;
+    int k = node_lower_bound;
     KeyBuffer key;
     for (int i = 0; i < reads_; i++) {
-      k = (k + (thread->rand.Uniform(100))) % FLAGS_num;
+      k = (k + (thread->rand.Uniform(100))) % node_upper_bound;
+      if (k < node_lower_bound)
+        k += node_lower_bound;
+      
       key.Set(k);
       iter->Seek(key.slice());
       if (iter->Valid() && iter->key() == key.slice()) found++;
@@ -1580,7 +1621,8 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i + j : (thread->rand.Uniform(FLAGS_num));
+        const int k = (seq ? (i + j) % (node_upper_bound - node_lower_bound) + node_lower_bound 
+          : (thread->rand.Uniform(node_upper_bound - node_lower_bound) + node_lower_bound));
         key.Set(k);
         batch.Delete(key.slice());
         thread->stats.FinishedSingleOp();
@@ -1616,7 +1658,7 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
           }
         }
 
-        const int k = thread->rand.Uniform(FLAGS_num*FLAGS_threads);
+        const int k = thread->rand.Uniform(node_upper_bound - node_lower_bound) + node_lower_bound;
 //        key.Set(k);
         GenerateKeyFromInt(k, &key);
         Status s =
@@ -1632,7 +1674,7 @@ GenerateKeyFromInt(thread->rand.Next() % (FLAGS_num * FLAGS_threads), &key);
     }
   }
 
-  void ReadWhileWriting_fixnum(ThreadState* thread) {
+  void ReadWhileWriting_fixnum(ThreadState* thread) { // TODO for making sure its in range
     static std::atomic<uint64_t> current_range = 0;
     if (thread->tid > 0) {
       ReadOptions options;
@@ -1794,15 +1836,17 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_use_existing_db = n;
-    } else if (sscanf(argv[i], "--fixed_compute_shards_num=%d%c", &n, &junk) == 1) {
-      // if it is zero allocate shard number according to the memory node number
-      // if larger than 0 this number should larger than meory node number
-      FLAGS_fixed_compute_shards_num = n;
+    // } else if (sscanf(argv[i], "--fixed_compute_shards_num=%d%c", &n, &junk) == 1) {
+    //   // if it is zero allocate shard number according to the memory node number
+    //   // if larger than 0 this number should larger than meory node number
+    //   FLAGS_fixed_compute_shards_num = n;
     } else if (sscanf(argv[i], "--reuse_logs=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_reuse_logs = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
+    } else if (sscanf(argv[i], "--max_key=%d%c", &n, &junk) == 1) {
+      FLAGS_max_key = n;
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--loads=%d%c", &n, &junk) == 1) {
@@ -1844,6 +1888,14 @@ int main(int argc, char** argv) {
       std::exit(1);
     }
   }
+
+  std::ifstream config_file;
+  config_file.open(db_config_file_name, std::ios_base::in);
+
+  config_file >> FLAGS_fixed_compute_shards_num;
+
+  config_file.close();
+
   FLAGS_write_buffer_size = TimberSaw::Options().write_buffer_size;
   FLAGS_max_file_size = TimberSaw::Options().max_file_size;
   FLAGS_block_size = TimberSaw::Options().block_size;
