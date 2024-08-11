@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 
 #include "TimberSaw/cache.h"
 #include "db/table_cache.h"
