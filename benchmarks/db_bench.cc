@@ -69,6 +69,9 @@ static const char* FLAGS_benchmarks =
     "snappycomp,"
     "snappyuncomp,";
 
+// Minimum possible value for key
+static int FLAGS_min_key = 0;
+
 // Maximum possible value for key
 static int FLAGS_max_key = 100000000;
 
@@ -1108,8 +1111,8 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
 
-    number_of_key_total = FLAGS_max_key;
-    node_lower_bound = 0;
+    number_of_key_total = FLAGS_max_key - FLAGS_min_key;
+    node_lower_bound = FLAGS_min_key;
     node_upper_bound = FLAGS_max_key;
     rdma_mg = Env::Default()->rdma_mg.get();
 
@@ -1129,7 +1132,7 @@ class Benchmark {
 
       uint64_t key_remaining = number_of_remainder_keys - std::min(number_of_remainder_keys, num_past_shards);
 
-      node_lower_bound = num_past_shards * number_of_key_per_shard 
+      node_lower_bound += num_past_shards * number_of_key_per_shard 
         + std::min(number_of_remainder_keys, num_past_shards)
 
       options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
@@ -1146,6 +1149,9 @@ class Benchmark {
         //                        + i*number_of_key_per_shard;
         node_upper_bound = lower_bound + number_of_key_per_shard + (key_remaining > 0);
         key_remaining -= (key_remaining > 0);
+
+        LOGFC(COLOR_PURPLE, stdout, "Node %hhu - Shard %d (total shard num: %d): lb: %llu, ub: %llu\n"
+          , (rdma_mg->node_id - 1) / 2, i, num_past_shards + i, lower_bound, node_upper_bound);
 
         //in case that the number_of_key_per_shard is rounded down.
         // if (i == FLAGS_fixed_compute_shards_num-1){
@@ -1847,6 +1853,8 @@ int main(int argc, char** argv) {
       FLAGS_num = n;
     } else if (sscanf(argv[i], "--max_key=%d%c", &n, &junk) == 1) {
       FLAGS_max_key = n;
+    } else if (sscanf(argv[i], "--min_key=%d%c", &n, &junk) == 1) {
+      FLAGS_min_key = n;
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--loads=%d%c", &n, &junk) == 1) {
