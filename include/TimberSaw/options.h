@@ -187,6 +187,7 @@ struct TimberSaw_EXPORT Options {
   int bloom_bits = 10;
 
   std::vector<std::pair<Slice,Slice>>* ShardInfo = nullptr;// [Lower bound, upper bound)
+  std::vector<size_t>* owned_shards = nullptr; // index of owned shards in ShardInfo
 };
 
 // Options that control read operations

@@ -11,9 +11,12 @@ DBImpl_Sharding::DBImpl_Sharding(const Options& options, const std::string& dbna
     for (auto iter : *options.ShardInfo) {
       Shard_Info.emplace_back(iter.first.ToString(), iter.second.ToString());
     }
-    for(const auto& iter : Shard_Info) {
+    for (auto iter : *options.owned_shards) {
+      owned_shards.emplace_back(iter);
+    }
+    for(const auto& iter : owned_shards) {
       // LOGFC(COLOR_PURPLE, stdout, "shard range : %s~%s\n", iter.second.c_str(), iter.first.c_str());
-      std::cout << COLOR_PURPLE << "shard range :" << iter.second << "~" << iter.first << COLOR_RESET << std::endl;
+      std::cout << COLOR_PURPLE << "shard " << iter << " range :" << Shard_Info[iter].second << "~" << Shard_Info[iter].first << COLOR_RESET << std::endl;
       //We can not set the target node id in DBImpl because we don't know what should be
       // the node id corresponding with this shard. (Is that true?) Probably not.
 
@@ -22,8 +25,8 @@ DBImpl_Sharding::DBImpl_Sharding(const Options& options, const std::string& dbna
       // to overload the function. The overloaded initial function will not create message
       // handling thread.
       auto sharded_db =
-          new DBImpl(options, dbname, iter.second, iter.first);
-      shards_pool.insert({iter.second, sharded_db});
+          new DBImpl(options, dbname, Shard_Info[iter].second, Shard_Info[iter].first);
+      shards_pool.insert({Shard_Info[iter].second, sharded_db});
     }
     int i = 0;
     int memory_node_num = Env::Default()->rdma_mg->memory_nodes.size();

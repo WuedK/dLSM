@@ -15,6 +15,8 @@
 
 namespace TimberSaw {
 
+static char db_config_file_name[100] = "../db.conf";
+
 std::shared_ptr<RDMA_Manager> Memory_Node_Keeper::rdma_mg = std::shared_ptr<RDMA_Manager>();
 TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
                                                   uint32_t tcp_port, int pr_s)
@@ -109,6 +111,17 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     }
     rdma_mg->memory_nodes.insert({2*i, connection_conf});
     i++;
+    myfile.close();
+
+    int num_shards_per_compute;
+    std::ifstream config_file;
+    config_file.open(db_config_file_name, std::ios_base::in);
+
+    config_file >> num_shards_per_compute;
+
+    config_file.close();
+
+    load_balancer = new Load_Balancer(rdma_mg->compute_nodes.size(), num_shards_per_compute);
   }
 
   Memory_Node_Keeper::~Memory_Node_Keeper() {
@@ -118,6 +131,10 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     }
     if (descriptor_file != nullptr){
       delete descriptor_file;
+    }
+    if (load_balancer != nullptr) {
+      delete load_balancer;
+      load_balancer = nullptr;
     }
   }
 

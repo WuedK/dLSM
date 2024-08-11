@@ -1134,67 +1134,47 @@ class Benchmark {
       uint64_t key_remaining = number_of_remainder_keys - std::min(number_of_remainder_keys, num_past_shards);
 
       node_lower_bound += num_past_shards * number_of_key_per_shard 
-        + std::min(number_of_remainder_keys, num_past_shards);
+                        + std::min(number_of_remainder_keys, num_past_shards);
+      node_upper_bound = node_lower_bound + number_of_key_per_shard * FLAGS_fixed_compute_shards_num 
+                        + std::min(key_remaining, FLAGS_fixed_compute_shards_num);
+
+      key_remaining = number_of_remainder_keys;
 
       options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
+      options.owned_shards = new std::vector<size_t>();
       // number_of_key_per_shard = number_of_key_per_compute
       //                           /FLAGS_fixed_compute_shards_num;
-      uint64_t lower_bound = node_lower_bound;
-      for (int i = 0; i < FLAGS_fixed_compute_shards_num; ++i) {
+      uint64_t lower_bound = FLAGS_min_key;
+      size_t i = 0;
+      while (lower_bound < FLAGS_max_key) {
+        uint64_t upper_bound = lower_bound + number_of_key_per_shard + (key_remaining > 0);
+        key_remaining -= (key_remaining > 0);
 
+        if ((rdma_mg->node_id - 1) / 2 * FLAGS_fixed_compute_shards_num <= i && i < (rdma_mg->node_id + 1) / 2 * FLAGS_fixed_compute_shards_num) {
+          LOGFC(COLOR_PURPLE, stdout, "Node %hhu Shard %llu(%llu in node): lb: %llu, ub: %llu\n"
+            (rdma_mg->node_id - 1) / 2, i, i - (rdma_mg->node_id - 1) / 2 * FLAGS_fixed_compute_shards_num
+            , lower_bound, upper_bound);
+
+          options.owned_shards->push_back(i);
+        }
+        else {
+          LOGFC(COLOR_PURPLE, stdout, "Shard %llu: lb: %llu, ub: %llu\n"
+            , i, lower_bound, upper_bound);
+        }
+        
         char* data_low = new char[FLAGS_key_size];
         char* data_up = new char[FLAGS_key_size];
         Slice key_low  = Slice(data_low, FLAGS_key_size);
         Slice key_up  = Slice(data_up, FLAGS_key_size);
-        // uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-        //                        + i*number_of_key_per_shard;
-        node_upper_bound = lower_bound + number_of_key_per_shard + (key_remaining > 0);
-        key_remaining -= (key_remaining > 0);
 
-        LOGFC(COLOR_PURPLE, stdout, "Node %hhu - Shard %d (total shard num: %d): lb: %llu, ub: %llu\n"
-          , (rdma_mg->node_id - 1) / 2, i, num_past_shards + i, lower_bound, node_upper_bound);
-
-        //in case that the number_of_key_per_shard is rounded down.
-        // if (i == FLAGS_fixed_compute_shards_num-1){
-        //   upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
-        // }
         GenerateKeyFromInt(lower_bound, &key_low);
-        GenerateKeyFromInt(node_upper_bound, &key_up);
+        GenerateKeyFromInt(upper_bound, &key_up);
         options.ShardInfo->emplace_back(key_low,key_up);
-        lower_bound = node_upper_bound;
+        lower_bound = upper_bound;
+        ++i;
       }
     }
-    // else if (rdma_mg->memory_nodes.size()> 1){
-
-    //   rdma_mg = Env::Default()->rdma_mg.get();
-    //   // number_of_key_total = FLAGS_num*FLAGS_threads*rdma_mg->compute_nodes.size(); // whole range.
-    //   // number_of_key_per_compute = FLAGS_num*FLAGS_threads;
-    //   number_of_shards = rdma_mg->compute_nodes.size() * FLAGS_fixed_compute_shards_num;
-    //   number_of_key_per_shard = number_of_key_total / number_of_shards;
-    //   number_of_remainder_keys = number_of_key_total / number_of_shards;
-
-    //   options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
-    //   number_of_key_per_shard = number_of_key_per_compute
-    //                             /rdma_mg->memory_nodes.size();
-    //   for (int i = 0; i < rdma_mg->memory_nodes.size(); ++i) {
-    //     char* data_low = new char[FLAGS_key_size];
-    //     char* data_up = new char[FLAGS_key_size];
-    //     Slice key_low  = Slice(data_low, FLAGS_key_size);
-    //     Slice key_up  = Slice(data_up, FLAGS_key_size);
-    //     uint64_t lower_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-    //                            + i*number_of_key_per_shard;
-    //     uint64_t upper_bound = number_of_key_per_compute*(rdma_mg->node_id -1)/2
-    //                            + (i+1)*number_of_key_per_shard;
-    //     if (i == rdma_mg->memory_nodes.size()-1){
-    //       // in case that the number_of_key_pershard round down.
-    //       upper_bound = number_of_key_per_compute*(rdma_mg->node_id + 1)/2;
-    //     }
-    //     GenerateKeyFromInt(lower_bound, &key_low);
-    //     GenerateKeyFromInt(upper_bound, &key_up);
-    //     options.ShardInfo->emplace_back(key_low,key_up);
-    //   }
-    // }
-
+    
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       std::fprintf(stderr, "open error: %s\n", s.ToString().c_str());

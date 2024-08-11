@@ -174,9 +174,10 @@ class Memory_Node_Keeper {
   VersionEdit_Merger ve_merger;
   std::atomic<bool> check_point_t_ready = true;
   std::mutex merger_mtx;
+
 //  std::mutex test_compaction_mutex;
 
-  // Load_Balancer load_balancer;
+  Load_Balancer* load_balancer = nullptr;
 #ifndef NDEBUG
   std::atomic<size_t> debug_counter = 0;
 
