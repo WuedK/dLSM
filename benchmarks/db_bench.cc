@@ -168,8 +168,8 @@ uint64_t number_of_key_total;
 // uint64_t number_of_key_per_compute;
 uint64_t number_of_remainder_keys;
 uint64_t number_of_key_per_shard;
-unit64_t node_lower_bound;
-unit64_t node_upper_bound;
+uint64_t node_lower_bound;
+uint64_t node_upper_bound;
 
 class Duration {
  public:
@@ -1139,7 +1139,7 @@ class Benchmark {
       // number_of_key_per_shard = number_of_key_per_compute
       //                           /FLAGS_fixed_compute_shards_num;
       for (int i = 0; i < FLAGS_fixed_compute_shards_num; ++i) {
-        unit64_t lower_bound = node_lower_bound;
+        uint64_t lower_bound = node_lower_bound;
 
         char* data_low = new char[FLAGS_key_size];
         char* data_up = new char[FLAGS_key_size];
