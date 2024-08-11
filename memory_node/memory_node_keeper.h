@@ -176,7 +176,7 @@ class Memory_Node_Keeper {
   std::mutex merger_mtx;
 //  std::mutex test_compaction_mutex;
 
-  Load_Balancer load_balancer;
+  // Load_Balancer load_balancer;
 #ifndef NDEBUG
   std::atomic<size_t> debug_counter = 0;
 
