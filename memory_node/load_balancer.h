@@ -83,7 +83,7 @@ struct Compute_Node_Info {
 
 class Load_Balancer {
 public:
-    Load_Balancer(size_t num_shards, size_t num_compute, );
+    Load_Balancer(size_t num_shards, size_t num_compute);
     ~Load_Balancer();
     void start(); // runs a thread which periodically does load balancing and then sleeps
     std::map<uint8_t, Compute_Node_Info>* new_bindings(); // returns a new ownership map -> will replace compute_node_info when ready

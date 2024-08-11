@@ -83,7 +83,7 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     std::string connection_conf;
     size_t pos = 0;
     std::ifstream myfile;
-    myfile.open (config_file_name, std::ios_base::in);
+    myfile.open (conn_config_file_name, std::ios_base::in);
     std::string space_delimiter = " ";
 
     std::getline(myfile,connection_conf );
