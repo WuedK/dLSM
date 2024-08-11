@@ -1139,8 +1139,8 @@ class Benchmark {
       options.ShardInfo = new std::vector<std::pair<Slice,Slice>>();
       // number_of_key_per_shard = number_of_key_per_compute
       //                           /FLAGS_fixed_compute_shards_num;
+      uint64_t lower_bound = node_lower_bound;
       for (int i = 0; i < FLAGS_fixed_compute_shards_num; ++i) {
-        uint64_t lower_bound = node_lower_bound;
 
         char* data_low = new char[FLAGS_key_size];
         char* data_up = new char[FLAGS_key_size];
