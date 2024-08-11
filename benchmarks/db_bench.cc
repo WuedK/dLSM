@@ -1505,7 +1505,9 @@ class Benchmark {
     // the number of iterations is the larger of read_ or write_
     while (!duration.Done(1)) {
 //      DB* db = SelectDB(thread);
-GenerateKeyFromInt(thread->rand.Next() % (node_upper_bound - node_lower_bound) + node_lower_bound, &key);
+const uint64_t k = thread->rand.Next() % (node_upper_bound - node_lower_bound) + node_lower_bound;
+LOGFC(COLOR_PURPLE, stdout, "new key from %llu\n", k);
+GenerateKeyFromInt(k, &key);
       if (get_weight == 0 && put_weight == 0) {
         // one batch completed, reinitialize for next batch
         get_weight = FLAGS_readwritepercent;
