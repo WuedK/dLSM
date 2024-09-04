@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include <queue>
 #include <map>
-#include <assert.h>
-#include <algorithm>
 #include <stddef.h>
 
 namespace TimberSaw {
@@ -73,13 +71,6 @@ private:
 
 };
 
-class Shard_Info_Cmp {
-public:
-    inline bool operator()(const Shard_Info& a, const Shard_Info& b) const {
-        return a.load() < b.load();
-    }
-};
-
 class Shard_Iterator {
 public:
     Shard_Iterator(const Shard_Iterator&) = delete;
@@ -123,14 +114,14 @@ private:
 
 class Compute_Node_Info {
 public:
-    Compute_Node_Info() : itr(this) {}
+    Compute_Node_Info(size_t num_shards) : _overal_load(0), _shards(num_shards, nullptr), itr(this) {}
 
     inline size_t load() const {
         return _overal_load;
     }
 
     inline size_t num_shards() const {
-        return _size;
+        return _shards.size();
     }
 
     inline uint8_t id() const {
@@ -139,7 +130,7 @@ public:
 
 
     inline Shard_Info& operator[](size_t shard_idx) {
-        return _shards[shard_idx];
+        return *(_shards[shard_idx]);
     }
 
     inline Shard_Iterator& ordered_iterator() {
@@ -149,24 +140,35 @@ public:
     friend class Load_Info_Container;
 
 private:
+    class Shard_Info_Pointer_Cmp {
+    public:
+        inline bool operator()(const Shard_Info* a, const Shard_Info* b) const {
+            return a->load() < b->load();
+        }
+    };
+
+    void shard_mergeSort(bool change_idx = true);
+    void shard_insertionSort(Shard_Info** arr, size_t N, Shard_Info_Pointer_Cmp cmp, bool first);
+    void shard_merge(size_t lidx, size_t midx, size_t ridx, Shard_Info_Pointer_Cmp cmp, bool first);
+    void set_shard_index();
+
+    void sort_shards();
+
     inline void compute_load_and_pass() {
         _overal_load = 0;
         itr.reset();
         for (size_t i = 0; i < _shards.size(); ++i) {
-            _shards[i]._load.compute_load_and_pass();
-            _overal_load += _shards[i]._load.last_load;
+            _shards[i]->_load.compute_load_and_pass();
+            _overal_load += _shards[i]->_load.last_load;
         }
-        std::sort(_shards.begin(), _shards.end(), Shard_Info_Cmp{});
+        sort_shards();
     }
 
 private:
     size_t _overal_load;
     uint8_t _id;
-    size_t _size;
-    std::vector<Shard_Info> _shards;
+    std::vector<Shard_Info*> _shards;
     Shard_Iterator itr;
-    bool _has_itr = false;
-
 };
 
 struct Owner_Ship_Transfer {
@@ -186,7 +188,7 @@ public:
     void compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load);
     void update_max_load();
     void change_owner_from_max_to_min(Shard_Info& shard);
-    void apply();
+    std::vector<Owner_Ship_Transfer>& apply();
 
     inline bool is_insignificant(Shard_Info& shard) {
         return shard._load.last_load == 0; // TODO better approaches?
@@ -206,7 +208,7 @@ public:
     }
 
     inline Shard_Info& shard_id(size_t shard_id) {
-        return cnodes[shard_id_to_idx[shard_id].first][shard_id_to_idx[shard_id].second];
+        return shards[shard_id];
     }
 
     inline Compute_Node_Info& operator[](uint8_t compute_id) {
@@ -215,7 +217,7 @@ public:
 
 
     inline size_t num_shards() {
-        return _num_shards;
+        return shards.size();
     }
 
     inline uint8_t num_compute() {
@@ -223,11 +225,8 @@ public:
     }
 
 private:
-    size_t _num_shards;
     std::vector<Compute_Node_Info> cnodes;
-    // Compute_Node_Info* cnodes;
-    bool compute_sorted;
-    std::vector<std::pair<uint8_t, size_t>> shard_id_to_idx;
+    std::vector<Shard_Info> shards;
     std::vector<Owner_Ship_Transfer> updates;
     std::multimap<size_t, uint8_t> ordered_nodes;
     size_t max_load_change = 0;

@@ -1,13 +1,138 @@
 #include "load_info_container.h"
 
+#include <assert.h>
+#include <algorithm>
+#include <cstring>
+
 namespace TimberSaw {
-    Load_Info_Container::Load_Info_Container(uint8_t num_compute, size_t num_total_shards) {
+    inline size_t getMinRunSize(size_t N) {
+        size_t r = 0;
+        while (N >= 64) {
+            r |= N & 1;
+            N >>= 1;
+        }
+        return N + r;
+    }
+
+    void Compute_Node_Info::shard_insertionSort(Shard_Info** arr, size_t N, Shard_Info_Pointer_Cmp cmp, bool first) {
+        for (size_t i = 1; i < N; ++i) {
+            size_t j;
+            Shard_Info* temp = arr[i];
+            for (j = i; (j > 0) && cmp(temp, arr[j-1]); --j) {
+                arr[j] = arr[j-1];
+                if (first)
+                    arr[j]->_index = j;
+            }
+            arr[j] = temp;
+            if (first)
+                arr[j]->_index = j;
+        }
+    }
+
+    // merge two blocks of sorted arrays -> midx is the starting index of the right array
+    void Compute_Node_Info::shard_merge(size_t lidx, size_t midx, size_t ridx, Shard_Info_Pointer_Cmp cmp, bool first) {
+        assert(!first || lidx == 0);
+
+        size_t nl = midx - lidx, nr = ridx - midx + 1;
+        Shard_Info** left = new Shard_Info*[nl];
+        Shard_Info** right = new Shard_Info*[nr];
+        size_t i, j, k;
+
+        // copy the two blocks into two temp arrays
+        memcpy(left, &_shards[lidx], nl);
+        memcpy(right, &_shards[midx], nr);
+        
+        // merge algorithm
+        i = 0;
+        j = 0;
+        k = lidx;
+        while (i < nl && j < nr) {
+            if (cmp(left[i], right[j])) {
+                _shards[k] = left[i];
+                ++i;
+            }
+            else {
+                _shards[k] = right[j];
+                ++j;
+            }
+
+            if (first)
+                _shards[k]->_index = k;
+
+            ++k;
+        }
+
+        // put the remaining elements in the array
+        while (i < nl) {
+            _shards[k] = left[i];
+            if (first)
+                _shards[k]->_index = k;
+            ++i;
+            ++k;
+        }
+
+        while (j < nr) {
+            _shards[k] = right[j];
+            if (first)
+                _shards[k]->_index = k;
+            ++j;
+            ++k;
+        }
+
+        delete[] left;
+        delete[] right;
 
     }
 
-    Load_Info_Container::~Load_Info_Container() {
-
+    void Compute_Node_Info::set_shard_index() {
+        for (size_t i = 0; i < _shards.size(); ++i) {
+            _shards[i]->_index = i;
+        }
     }
+
+    // bottom-up implementation 
+    void Compute_Node_Info::shard_mergeSort(bool change_idx) {  
+        Shard_Info_Pointer_Cmp cmp;
+        size_t N = _shards.size();
+        size_t currentSize = getMinRunSize(N), i;
+
+        // ad-hoc -> sort smaller blocks using insertion sort
+        if (currentSize > 1) {
+            for (i = 0; i < N; i += currentSize)
+                shard_insertionSort(&_shards[i], i + currentSize < N ? currentSize : N - i, cmp, change_idx && currentSize >= N);
+        }
+        
+        for (; currentSize < N; currentSize *= 2) {
+            for (i = 0; i < N - 1; i += 2*currentSize) {
+                size_t mid = std::min(i + currentSize, N-1);
+                size_t right = std::min(i + 2*currentSize - 1, N-1);
+
+                if (cmp(_shards[mid], _shards[mid - 1])) // merge two blocks if they are not already sorted
+                    shard_merge(i, mid, right, cmp, currentSize * 2 >= N);
+                else if (currentSize * 2 >= N)
+                    set_shard_index();
+            }
+        }
+    }
+
+    void Compute_Node_Info::sort_shards() {
+        shard_mergeSort();
+    }
+
+    Load_Info_Container::Load_Info_Container(uint8_t num_compute, size_t num_shards_per_compute) : cnodes(num_compute), shards(num_compute * num_shards_per_compute) {
+        size_t shard_id = 0;
+        for (uint8_t i = 0; i < num_compute; ++i) {
+            cnodes[i]._id = i;
+            for (size_t j = 0; j < num_shards_per_compute; ++j, ++shard_id) {
+                shards[shard_id]._id = shard_id;
+                shards[shard_id]._index = j;
+                shards[shard_id]._owner = i;
+                cnodes[i]._shards[j] = &shards[shard_id];
+            }
+        }
+    }
+
+    Load_Info_Container::~Load_Info_Container() {}
 
     void Load_Info_Container::rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
         Shard_Info& _shard = shard_id(shard);
@@ -26,6 +151,7 @@ namespace TimberSaw {
     }
 
     void Load_Info_Container::compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load) {
+        updates.clear();
         ordered_nodes.clear();
         max_load_change = 0;
         cnodes[0].compute_load_and_pass();
@@ -68,7 +194,16 @@ namespace TimberSaw {
         max_load_change += shard._load.last_load;
     }
 
-    void Load_Info_Container::apply() {
+    std::vector<Owner_Ship_Transfer>& Load_Info_Container::apply() {
+        for (auto update : updates) {
+            update.to._shards.push_back(&update.shard);
+            std::swap(update.from[update.shard._index], update.from[update.from.num_shards() - 1]);
+            update.from[update.shard._index]._index = update.shard._index;
+            update.from._shards.pop_back();
+            update.shard._owner = update.to._id;
+            update.shard._index = update.to.num_shards() - 1;
+        }
 
+        return updates;
     }
 }
