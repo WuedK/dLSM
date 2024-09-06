@@ -3,24 +3,37 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <queue>
+#include <vector>
 #include <map>
 #include <stddef.h>
+#include <mutex>
+// #include <atomic>
+
+#include <iostream>
+#include <stdio.h>
+
+//TODO add cuncurrency -> we may need to update load info at the time of sorting and stuff
 
 namespace TimberSaw {
 
 struct Load_Info {
 
-    static constexpr size_t local_read_time = 0;
-    static constexpr size_t remote_read_time = 0;
-    static constexpr size_t local_write_time = 0;
-    static constexpr size_t flush_time = 0;
+    static constexpr size_t local_read_time = 1;
+    static constexpr size_t remote_read_time = 10;
+    static constexpr size_t local_write_time = 1;
+    static constexpr size_t flush_time = 100;
     static constexpr size_t mem_table_cap_mb = 64;
 
     size_t num_reads = 0;
     size_t num_writes = 0;
     size_t num_remote_reads = 0;
     size_t num_flushes = 0;
+
+    // std::atomic<std::size_t> ip_num_reads(0);
+    // std::atomic<size_t> ip_num_writes;
+    // std::atomic<size_t> ip_num_remote_reads;
+    // std::atomic<size_t> ip_num_flushes;
+
     // size_t num_files;
     // size_t size_MB;
 
@@ -40,6 +53,10 @@ struct Load_Info {
         num_writes = 0;
         num_flushes = 0;
     }
+
+    void print() const {
+        printf("last_load: %lu, num_reads: %lu, num_writes: %lu, num_remote_reads: %lu, num_flushes: %lu\n", last_load, num_reads, num_writes, num_remote_reads, num_flushes);
+    }
 };
 
 class Shard_Info {
@@ -48,7 +65,7 @@ public:
         return _load.last_load;
     }
 
-    inline uint8_t owner() const {
+    inline size_t owner() const {
         return _owner;
     }
 
@@ -60,16 +77,23 @@ public:
         return _index;
     }
 
+    inline void print() const {
+        printf("shard with id %lu is owned by cnode[%lu] in index %lu. The load of this shard is: ", _id, _owner, _index);
+        _load.print();
+    }
+
     friend class Load_Info_Container;
     friend class Compute_Node_Info;
     
 private:
-    uint8_t _owner;
+    size_t _owner;
     size_t _id;
     size_t _index;
     Load_Info _load;
 
 };
+
+class Compute_Node_Info;
 
 class Shard_Iterator {
 public:
@@ -80,31 +104,24 @@ public:
         return valid;
     }
 
-    inline Shard_Iterator& operator++() {
-        if (!valid || _shard_idx == 0 || _shard_idx >= _owner.num_shards()) {
-            valid = false;
-        }
-        else {
-            --_shard_idx;
-        }
-        return *this;
-    }
+    Shard_Iterator& operator++();
 
-    inline Shard_Info* shard() {
-        return (valid ? &_owner[_shard_idx] : nullptr);
+    Shard_Info* shard();
+
+    inline size_t index() {
+        return _shard_idx;
     }
 
     friend class Compute_Node_Info;
+    friend class Load_Info_Container;
 private:
-    explicit Shard_Iterator(Compute_Node_Info* owner) : _owner(*owner) {
-        reset();
-    }
+    explicit Shard_Iterator(Compute_Node_Info& owner);
+    // explicit Shard_Iterator(Compute_Node_Info& owner) : _owner(owner) {
+    //     reset();
+    // }
     // explicit Shard_Iterator(Compute_Node_Info& owner) : _owner(owner), _shard_idx(owner.num_shards() - 1) {}
 
-    void reset() {
-        _shard_idx = _owner.num_shards() - 1;
-        valid = true;
-    }
+    void reset();
 
 private:
     size_t _shard_idx;
@@ -114,7 +131,8 @@ private:
 
 class Compute_Node_Info {
 public:
-    Compute_Node_Info(size_t num_shards) : _overal_load(0), _shards(num_shards, nullptr), itr(this) {}
+    Compute_Node_Info() : _overal_load(0), itr(*this) {}
+    // Compute_Node_Info(size_t num_shards) : _overal_load(0), _shards(num_shards), itr(*this) {}
 
     inline size_t load() const {
         return _overal_load;
@@ -124,7 +142,7 @@ public:
         return _shards.size();
     }
 
-    inline uint8_t id() const {
+    inline size_t id() const {
         return _id;
     }
 
@@ -135,6 +153,14 @@ public:
 
     inline Shard_Iterator& ordered_iterator() {
         return itr;
+    }
+
+    inline void print() const {
+        printf("cnode with id %lu has overall load of %lu and owns %lu shards:\n", _id, _overal_load, _shards.size());
+        for (auto s : _shards) {
+            std::cout << s->_id << ", ";
+        }
+        printf("\n\n");
     }
 
     friend class Load_Info_Container;
@@ -166,21 +192,20 @@ private:
 
 private:
     size_t _overal_load;
-    uint8_t _id;
+    size_t _id;
     std::vector<Shard_Info*> _shards;
     Shard_Iterator itr;
 };
 
 struct Owner_Ship_Transfer {
-    Compute_Node_Info& from;
-    Compute_Node_Info& to;
-    Shard_Info& shard;
+    size_t from;
+    size_t to;
+    size_t shard;
 };
-
 
 class Load_Info_Container {
 public:
-    Load_Info_Container(uint8_t num_compute, size_t num_total_shards);
+    Load_Info_Container(size_t num_compute, size_t num_total_shards);
     ~Load_Info_Container();
 
     void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
@@ -188,7 +213,7 @@ public:
     void compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load);
     void update_max_load();
     void change_owner_from_max_to_min(Shard_Info& shard);
-    std::vector<Owner_Ship_Transfer>& apply();
+    std::vector<Owner_Ship_Transfer> apply();
 
     inline bool is_insignificant(Shard_Info& shard) {
         return shard._load.last_load == 0; // TODO better approaches?
@@ -211,7 +236,7 @@ public:
         return shards[shard_id];
     }
 
-    inline Compute_Node_Info& operator[](uint8_t compute_id) {
+    inline Compute_Node_Info& operator[](size_t compute_id) {
         return cnodes[compute_id];
     }
 
@@ -220,7 +245,7 @@ public:
         return shards.size();
     }
 
-    inline uint8_t num_compute() {
+    inline size_t num_compute() {
         return cnodes.size();
     }
 
@@ -228,7 +253,7 @@ private:
     std::vector<Compute_Node_Info> cnodes;
     std::vector<Shard_Info> shards;
     std::vector<Owner_Ship_Transfer> updates;
-    std::multimap<size_t, uint8_t> ordered_nodes;
+    std::multimap<size_t, size_t> ordered_nodes;
     size_t max_load_change = 0;
 };
 

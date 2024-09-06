@@ -5,7 +5,31 @@
 #include <cstring>
 
 namespace TimberSaw {
-    inline size_t getMinRunSize(size_t N) {
+
+    Shard_Iterator::Shard_Iterator(Compute_Node_Info& owner) : _owner(owner) {
+        reset();
+    }
+
+    Shard_Iterator& Shard_Iterator::operator++() {
+            if (!valid || _shard_idx == 0 || _shard_idx >= _owner.num_shards()) {
+                valid = false;
+            }
+            else {
+                --_shard_idx;
+            }
+            return *this;
+    }
+
+    Shard_Info* Shard_Iterator::shard() {
+        return (valid ? &_owner[_shard_idx] : nullptr);
+    }
+
+    void Shard_Iterator::reset() {
+        _shard_idx = _owner.num_shards() - 1;
+        valid = true;
+    }
+
+    size_t getMinRunSize(size_t N) {
         size_t r = 0;
         while (N >= 64) {
             r |= N & 1;
@@ -119,10 +143,15 @@ namespace TimberSaw {
         shard_mergeSort();
     }
 
-    Load_Info_Container::Load_Info_Container(uint8_t num_compute, size_t num_shards_per_compute) : cnodes(num_compute), shards(num_compute * num_shards_per_compute) {
+    Load_Info_Container::Load_Info_Container(size_t num_compute, size_t num_shards_per_compute) 
+        : cnodes(num_compute), shards(num_compute * num_shards_per_compute) {
+        std::cout << num_compute << " " << num_shards_per_compute << "\n";
+
         size_t shard_id = 0;
-        for (uint8_t i = 0; i < num_compute; ++i) {
+        for (size_t i = 0; i < num_compute; ++i) {
             cnodes[i]._id = i;
+            cnodes[i]._shards.resize(num_shards_per_compute);
+            cnodes[i].itr.reset();
             for (size_t j = 0; j < num_shards_per_compute; ++j, ++shard_id) {
                 shards[shard_id]._id = shard_id;
                 shards[shard_id]._index = j;
@@ -130,6 +159,7 @@ namespace TimberSaw {
                 cnodes[i]._shards[j] = &shards[shard_id];
             }
         }
+
     }
 
     Load_Info_Container::~Load_Info_Container() {}
@@ -159,7 +189,7 @@ namespace TimberSaw {
         min_load = cnodes[0]._overal_load;
         max_load = cnodes[0]._overal_load;
         ordered_nodes.insert({cnodes[0]._overal_load, 0});
-        for (uint8_t i = 1; i < cnodes.size(); ++i) {
+        for (size_t i = 1; i < cnodes.size(); ++i) {
             cnodes[i].compute_load_and_pass();
             mean_load += cnodes[i]._overal_load;
             if (min_load > cnodes[i]._overal_load) {
@@ -188,20 +218,24 @@ namespace TimberSaw {
         Compute_Node_Info& from = max_node();
         Compute_Node_Info& to = min_node();
         assert(shard._owner == from._id);
-        updates.push_back({from, to, shard});
+        updates.push_back({from._id, to._id, shard._id});
         ordered_nodes.erase(ordered_nodes.begin());
         ordered_nodes.insert({to._overal_load + shard._load.last_load, to._id});
         max_load_change += shard._load.last_load;
     }
 
-    std::vector<Owner_Ship_Transfer>& Load_Info_Container::apply() {
+    std::vector<Owner_Ship_Transfer> Load_Info_Container::apply() {
         for (auto update : updates) {
-            update.to._shards.push_back(&update.shard);
-            std::swap(update.from[update.shard._index], update.from[update.from.num_shards() - 1]);
-            update.from[update.shard._index]._index = update.shard._index;
-            update.from._shards.pop_back();
-            update.shard._owner = update.to._id;
-            update.shard._index = update.to.num_shards() - 1;
+            size_t from = update.from, to = update.to;
+            size_t shard_id = update.shard, shard_index = shards[shard_id]._index;
+
+            std::swap(cnodes[from]._shards[shard_index], cnodes[from]._shards.back());
+            cnodes[from]._shards[shard_index]->_index = shard_index;
+            cnodes[from]._shards.pop_back();
+
+            cnodes[to]._shards.push_back(&shards[shard_id]);
+            shards[shard_id]._owner = to;
+            shards[shard_id]._index = cnodes[to].num_shards() - 1;
         }
 
         return updates;
