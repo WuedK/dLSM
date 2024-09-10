@@ -3,6 +3,7 @@
 //
 
 #include "load_balancer.h"
+#include "../util/testlog.h"
 
 #include <unistd.h>
 #include <algorithm>
@@ -11,8 +12,8 @@
 
 namespace TimberSaw {
 
-    Load_Balancer::Load_Balancer(size_t num_compute, size_t num_shards_per_compute, std::mutex& lck) 
-        : container(num_compute, num_shards_per_compute), started(false), lock(lck) {}
+    Load_Balancer::Load_Balancer(size_t num_compute, size_t num_shards_per_compute) 
+        : container(num_compute, num_shards_per_compute), started(false) {}
 
     Load_Balancer::~Load_Balancer() {}
 
@@ -26,10 +27,8 @@ namespace TimberSaw {
             size_t max_load;
             size_t mean_load = 0;
 
-            lock.lock();
             container.compute_load_and_pass(min_load, max_load, mean_load);
             // std::cout << "load computed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-            lock.unlock();
 
             // continue;
 
@@ -39,6 +38,7 @@ namespace TimberSaw {
 
             int min_stat = check_load(container.min_node().load(), mean_load);
             int max_stat = check_load(container.max_node().load(), mean_load);
+            // TODO add something that if we have outlier do some shard, we recompute mean for the other nodes and try to balance those
             while ((max_stat > 1 || min_stat < -1) && max_stat > -2 && min_stat < 2) { // loop on nodes
                 Compute_Node_Info& max_node = container.max_node();
                 // std::cout << "before sort:\n";
@@ -89,13 +89,16 @@ namespace TimberSaw {
     }
 
     void Load_Balancer::set_up_new_plan() {
+        char buffer_2[10000] = "";
         auto updates = container.apply();
-        lock.lock();
-        std::cout << "* new changes: \n";
+        sprintf(buffer_2 + strlen(buffer_2), "* new changes: \n");
+        // std::cout << "* new changes: \n";
         for (auto update : updates) {
-            std:: cout << "Shard " << update.shard << " from node " << update.from << " to node " << update.to << "\n";
+            sprintf(buffer_2 + strlen(buffer_2), "Shard %lu from node %lu to node %lu\n", update.shard, update.from, update.to);
+            // std:: cout << "Shard " << update.shard << " from node " << update.from << " to node " << update.to << "\n";
         }
-        lock.unlock();
+
+        LOGF(stdout, "%s", buffer_2);
 
     }
 

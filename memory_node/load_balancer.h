@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include <iostream>
+#include <cstring>
 
 
 namespace TimberSaw {
@@ -17,7 +18,7 @@ namespace TimberSaw {
 
 class Load_Balancer {
 public:
-    Load_Balancer(size_t num_compute, size_t num_shards_per_compute, std::mutex& lck);
+    Load_Balancer(size_t num_compute, size_t num_shards_per_compute);
     ~Load_Balancer();
     void start(); // runs a thread which periodically does load balancing and then sleeps
     // void new_bindings(); // returns a new ownership map -> will replace compute_node_info when ready
@@ -27,18 +28,22 @@ public:
     // void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
     void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
 
-    void print() {
-        std::cout << "node info:\n";
+    void print(char* buffer) {
+        // std::cout << "node info:\n";
+        sprintf(buffer + strlen(buffer), "node info:\n");
         for(size_t node = 0; node < container.num_compute(); ++node) {
-            container[node].print();
+            container[node].print(buffer);
         }
-        std::cout << "\n\n";
+        sprintf(buffer + strlen(buffer), "\n\n");
+        // std::cout << "\n\n";
 
-        // std::cout << "shard info:\n";
+        // // std::cout << "shard info:\n";
+        // sprintf(buffer + strlen(buffer), "shard info:\n");
         // for(size_t shard = 0; shard < container.num_shards() && shard < 10; ++shard) {
-        //     container.shard_id(shard).print();
+        //     container.shard_id(shard).print(buffer);
         // }
-        std::cout << "_____________________________________________________\n";
+        sprintf(buffer + strlen(buffer), "_____________________________________________________\n");
+        // // std::cout << "_____________________________________________________\n";
     }
     
     // functions for updating load info per shard and node
@@ -70,7 +75,6 @@ private:
     static constexpr size_t load_imbalance_threshold_half = load_imbalance_threshold / 2;
     static constexpr size_t low_load_thresh = 0;
     std::atomic<bool> started;
-    std::mutex& lock;
 };
 
 }

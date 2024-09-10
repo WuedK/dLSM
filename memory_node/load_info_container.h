@@ -13,6 +13,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
+#include <cstring>
 
 //TODO add cuncurrency -> we may need to update load info at the time of sorting and stuff
 
@@ -61,8 +62,9 @@ struct Load_Info {
         num_flushes = 0;
     }
 
-    void print() const {
-        printf("last_load: %lu, num_reads: %lu, num_writes: %lu, num_remote_reads: %lu, num_flushes: %lu\n", last_load, num_reads, num_writes, num_remote_reads, num_flushes);
+    void print(char* buffer) const {
+        sprintf(buffer + strlen(buffer), "last_load: %lu, num_reads: %lu, num_writes: %lu, num_remote_reads: %lu, num_flushes: %lu\n"
+            , last_load, num_reads.load(), num_writes.load(), num_remote_reads.load(), num_flushes.load());
     }
 };
 
@@ -84,10 +86,10 @@ public:
     //     return _index;
     // }
 
-    inline void print() const {
+    inline void print(char* buffer) const {
         // printf("shard with id %lu is owned by cnode[%lu] in index %lu. The load of this shard is: ", _id, _owner, _index);
-        printf("shard with id %lu is owned by cnode[%lu]. The load of this shard is: ", _id, _owner);
-        _load.print();
+        sprintf(buffer + strlen(buffer), "shard with id %lu is owned by cnode[%lu]. The load of this shard is: ", _id, _owner);
+        _load.print(buffer);
     }
 
     friend class Load_Info_Container;
@@ -161,17 +163,17 @@ public:
 
     inline Shard_Iterator& ordered_iterator() {
         sort_shards_if_needed();
-        std::cout << "just after sort\n";
+        // std::cout << "just after sort\n";
         return itr;
     }
 
 
-    inline void print() const {
-        printf("cnode with id %lu has overall load of %lu and owns %lu shards:\n", _id, _overal_load, _shards.size());
+    inline void print(char* buffer) const {
+        sprintf(buffer + strlen(buffer), "cnode with id %lu has overall load of %lu and owns %lu shards:\n\n", _id, _overal_load, _shards.size());
         // for (auto s : _shards) {
         //     std::cout << s->_id << ", ";
         // }
-        printf("\n");
+        // printf("\n");
     }
 
     friend class Load_Info_Container;

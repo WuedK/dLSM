@@ -1,5 +1,6 @@
 #include "load_balancer.h"
 #include "../util/random.h"
+#include "../util/testlog.h"
 
 #include <iostream>
 #include <thread>
@@ -20,7 +21,8 @@ struct Input {
 };
 
 void help() {
-    cout << "enter num_compute and num_shard_per_compute respectively\n";
+    // cout << "enter num_compute and num_shard_per_compute respectively\n";
+    LOGF(stdout, "enter num_compute and num_shard_per_compute respectively\n");
 }
 
 void parse_input(Input& input) {
@@ -35,22 +37,25 @@ size_t key_to_shard(size_t key, size_t num_shards) {
     return key / shard_size;
 }
 
-void load_generator(TimberSaw::Load_Balancer& lb, std::mutex& lock, const Input& in) {
+void load_generator(TimberSaw::Load_Balancer& lb, const Input& in) {
     TimberSaw::Random64 num_gen(65406);
     TimberSaw::Random32 type_gen(65406);
     TimberSaw::Random64 key_gen(65406);
     TimberSaw::Random32 remote_gen(65406);
+    char buffer[300] = "";
 
     for (int round = 0;; ++round) {
-        cout << round << " " ;
+        // cout << round << " " ;
         size_t num_queries = num_gen.Uniform(1000000ull) + 100000ull;
         sleep(1);
-        cout << num_queries << "\n";
-        lock.lock();
+        sprintf(buffer + strlen(buffer), "round: %d -> num_queries: %lu \n", round, num_queries);
+        // cout << num_queries << "\n";
         if (round % 30 == 0) {
-            cout << "round " << round << "\n";
-            lb.print();
+            lb.print(buffer);
         }
+
+        LOGF(stdout, "%s", buffer);
+        memset(buffer, 0, 300);
 
         while(--num_queries) {
             // if (round == 28) {
@@ -66,7 +71,6 @@ void load_generator(TimberSaw::Load_Balancer& lb, std::mutex& lock, const Input&
                 lb.increment_load_info(key_to_shard(key, in.num_compute * in.num_shard_per_compute), 0, 1, 0, (remote_gen.Next() % 1000) == 1);
             }
         }
-        lock.unlock();
         // if (round == 28) {
         //     std::cout << "bye\n";
         // }
@@ -76,9 +80,8 @@ void load_generator(TimberSaw::Load_Balancer& lb, std::mutex& lock, const Input&
 int main() {
     Input in;
     parse_input(in);
-    mutex lock;
-    TimberSaw::Load_Balancer lb(in.num_compute, in.num_shard_per_compute, lock);
-    std::thread t(load_generator, std::ref(lb), std::ref(lock), std::ref(in));
+    TimberSaw::Load_Balancer lb(in.num_compute, in.num_shard_per_compute);
+    std::thread t(load_generator, std::ref(lb), std::ref(in));
     
     lb.start();
 }

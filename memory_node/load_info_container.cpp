@@ -160,7 +160,7 @@ namespace TimberSaw {
 
     Load_Info_Container::Load_Info_Container(size_t num_compute, size_t num_shards_per_compute) 
         : cnodes(num_compute), shards(num_compute * num_shards_per_compute) {
-        std::cout << num_compute << " " << num_shards_per_compute << "\n";
+        // std::cout << num_compute << " " << num_shards_per_compute << "\n";
 
         size_t shard_id = 0;
         for (size_t i = 0; i < num_compute; ++i) {
@@ -235,7 +235,7 @@ namespace TimberSaw {
         ordered_nodes.clear();
         max_load_change = 0;
         cnodes[0].compute_load_and_pass();
-        std::cout << "done with comuting load\n";
+        // std::cout << "done with comuting load\n";
         mean_load = cnodes[0]._overal_load;
         min_load = cnodes[0]._overal_load;
         max_load = cnodes[0]._overal_load;
@@ -274,8 +274,8 @@ namespace TimberSaw {
         Compute_Node_Info& from = max_node();
         Compute_Node_Info& to = min_node();
         Shard_Info& shard = from[shard_idx];
-        std::cout << "changing ownership of shard " << shard.id() << " from " << from.id() << " (load: " << from.load() - max_load_change 
-            << " -> " << from.load() - max_load_change - shard._load.last_load << ") to " << to.id() << "\n" ;
+        // std::cout << "changing ownership of shard " << shard.id() << " from " << from.id() << " (load: " << from.load() - max_load_change 
+        //     << " -> " << from.load() - max_load_change - shard._load.last_load << ") to " << to.id() << "\n" ;
         assert(shard._owner == from._id);
         shard._owner = to._id;
         to._overal_load += shard._load.last_load;

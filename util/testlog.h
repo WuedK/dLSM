@@ -15,8 +15,10 @@
 
 
 #ifdef ENABLE_TEST_LOGGING
-#include <iostream>
+// #include <iostream>
 #include <stdio.h>
+// #include <string>
+// #include <sstream>
 
 #define LOGF(out_stream ,format, args...) std::fprintf(out_stream, format, ## args)
 #define LOGFC(color, out_stream, format, args...) std::fprintf(out_stream, color format COLOR_RESET, ## args)
