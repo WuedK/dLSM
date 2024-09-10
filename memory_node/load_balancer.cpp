@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <vector>
+#include <assert.h>
 
 namespace TimberSaw {
 
@@ -27,6 +28,7 @@ namespace TimberSaw {
 
             lock.lock();
             container.compute_load_and_pass(min_load, max_load, mean_load);
+            // std::cout << "load computed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
             lock.unlock();
 
             // continue;
@@ -39,7 +41,9 @@ namespace TimberSaw {
             int max_stat = check_load(container.max_node().load(), mean_load);
             while ((max_stat > 1 || min_stat < -1) && max_stat > -2 && min_stat < 2) { // loop on nodes
                 Compute_Node_Info& max_node = container.max_node();
+                // std::cout << "before sort:\n";
                 Shard_Iterator& itr = max_node.ordered_iterator();
+                // std::cout << "after sort:\n";
 
                 while (itr.is_valid()) { // loop on shards
                     if (container.is_insignificant(*(itr.shard()))) {
@@ -58,7 +62,8 @@ namespace TimberSaw {
                         continue;
                     }
                     
-                    container.change_owner_from_max_to_min(*(itr.shard()));
+                    assert(&container.max_node() == &max_node);
+                    container.change_owner_from_max_to_min(itr.index());
                     ++itr;
                     if (hload_stat < 2 && lload_stat > -2) {
                         break;
@@ -94,9 +99,9 @@ namespace TimberSaw {
 
     }
 
-    void Load_Balancer::rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
-        container.rewrite_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);
-    }
+    // void Load_Balancer::rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
+    //     container.rewrite_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);
+    // }
 
     void Load_Balancer::increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
         container.increment_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);

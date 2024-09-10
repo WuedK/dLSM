@@ -7,10 +7,12 @@
 #include <map>
 #include <stddef.h>
 #include <mutex>
-// #include <atomic>
+#include <shared_mutex>
+#include <atomic>
 
 #include <iostream>
 #include <stdio.h>
+#include <assert.h>
 
 //TODO add cuncurrency -> we may need to update load info at the time of sorting and stuff
 
@@ -24,10 +26,15 @@ struct Load_Info {
     static constexpr size_t flush_time = 100;
     static constexpr size_t mem_table_cap_mb = 64;
 
-    size_t num_reads = 0;
-    size_t num_writes = 0;
-    size_t num_remote_reads = 0;
-    size_t num_flushes = 0;
+    std::atomic<size_t> num_reads{0};
+    std::atomic<size_t> num_writes{0};
+    std::atomic<size_t> num_remote_reads{0};
+    std::atomic<size_t> num_flushes{0};
+
+    std::atomic<size_t> temp_num_reads{0};
+    std::atomic<size_t> temp_num_writes{0};
+    std::atomic<size_t> temp_num_remote_reads{0};
+    std::atomic<size_t> temp_num_flushes{0};
 
     // std::atomic<std::size_t> ip_num_reads(0);
     // std::atomic<size_t> ip_num_writes;
@@ -73,12 +80,13 @@ public:
         return _id;
     }
 
-    inline size_t index() const {
-        return _index;
-    }
+    // inline size_t index() const {
+    //     return _index;
+    // }
 
     inline void print() const {
-        printf("shard with id %lu is owned by cnode[%lu] in index %lu. The load of this shard is: ", _id, _owner, _index);
+        // printf("shard with id %lu is owned by cnode[%lu] in index %lu. The load of this shard is: ", _id, _owner, _index);
+        printf("shard with id %lu is owned by cnode[%lu]. The load of this shard is: ", _id, _owner);
         _load.print();
     }
 
@@ -88,7 +96,7 @@ public:
 private:
     size_t _owner;
     size_t _id;
-    size_t _index;
+    // size_t _index;
     Load_Info _load;
 
 };
@@ -152,15 +160,18 @@ public:
     }
 
     inline Shard_Iterator& ordered_iterator() {
+        sort_shards_if_needed();
+        std::cout << "just after sort\n";
         return itr;
     }
 
+
     inline void print() const {
         printf("cnode with id %lu has overall load of %lu and owns %lu shards:\n", _id, _overal_load, _shards.size());
-        for (auto s : _shards) {
-            std::cout << s->_id << ", ";
-        }
-        printf("\n\n");
+        // for (auto s : _shards) {
+        //     std::cout << s->_id << ", ";
+        // }
+        printf("\n");
     }
 
     friend class Load_Info_Container;
@@ -169,25 +180,26 @@ private:
     class Shard_Info_Pointer_Cmp {
     public:
         inline bool operator()(const Shard_Info* a, const Shard_Info* b) const {
+            assert(a && b);
             return a->load() < b->load();
         }
     };
 
-    void shard_mergeSort(bool change_idx = true);
-    void shard_insertionSort(Shard_Info** arr, size_t N, Shard_Info_Pointer_Cmp cmp, bool first);
-    void shard_merge(size_t lidx, size_t midx, size_t ridx, Shard_Info_Pointer_Cmp cmp, bool first);
-    void set_shard_index();
+    // void shard_mergeSort(bool change_idx = true);
+    // void shard_insertionSort(Shard_Info** arr, size_t N, Shard_Info_Pointer_Cmp cmp, bool first);
+    // void shard_merge(size_t lidx, size_t midx, size_t ridx, Shard_Info_Pointer_Cmp cmp, bool first);
+    // void set_shard_index();
 
-    void sort_shards();
+    void sort_shards_if_needed();
 
     inline void compute_load_and_pass() {
         _overal_load = 0;
+        is_sorted = false;
         itr.reset();
         for (size_t i = 0; i < _shards.size(); ++i) {
             _shards[i]->_load.compute_load_and_pass();
             _overal_load += _shards[i]->_load.last_load;
         }
-        sort_shards();
     }
 
 private:
@@ -195,6 +207,7 @@ private:
     size_t _id;
     std::vector<Shard_Info*> _shards;
     Shard_Iterator itr;
+    bool is_sorted = false;
 };
 
 struct Owner_Ship_Transfer {
@@ -208,11 +221,11 @@ public:
     Load_Info_Container(size_t num_compute, size_t num_total_shards);
     ~Load_Info_Container();
 
-    void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
+    // void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
     void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
     void compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load);
     void update_max_load();
-    void change_owner_from_max_to_min(Shard_Info& shard);
+    void change_owner_from_max_to_min(size_t shard_idx);
     std::vector<Owner_Ship_Transfer> apply();
 
     inline bool is_insignificant(Shard_Info& shard) {
@@ -250,11 +263,15 @@ public:
     }
 
 private:
+    void flush_load_changes();
+
+private:
     std::vector<Compute_Node_Info> cnodes;
     std::vector<Shard_Info> shards;
     std::vector<Owner_Ship_Transfer> updates;
     std::multimap<size_t, size_t> ordered_nodes;
     size_t max_load_change = 0;
+    std::shared_mutex mu;
 };
 
 }

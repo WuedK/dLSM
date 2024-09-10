@@ -1,13 +1,18 @@
 #include "load_balancer.h"
+#include "../util/random.h"
 
-#include <random>
 #include <iostream>
 #include <thread>
 #include <stdio.h>
 #include <unistd.h>
 #include <mutex>
+#include <assert.h>
 
 using namespace std;
+
+#define KEY_LB 0ull
+#define KEY_UB 1024ull * 1024ull * 1024ull
+#define RW_P 25
 
 struct Input {
     size_t num_compute;
@@ -23,38 +28,48 @@ void parse_input(Input& input) {
     cin >> input.num_compute >> input.num_shard_per_compute;
 }
 
-void load(TimberSaw::Load_Balancer& lb, std::mutex& lock, const Input& in) {
+size_t key_to_shard(size_t key, size_t num_shards) {
+    size_t num_keys = KEY_UB - KEY_LB;
+    size_t shard_size = num_keys / num_shards;
+    assert(key / shard_size < num_shards);
+    return key / shard_size;
+}
+
+void load_generator(TimberSaw::Load_Balancer& lb, std::mutex& lock, const Input& in) {
+    TimberSaw::Random64 num_gen(65406);
+    TimberSaw::Random32 type_gen(65406);
+    TimberSaw::Random64 key_gen(65406);
+    TimberSaw::Random32 remote_gen(65406);
+
     for (int round = 0;; ++round) {
+        cout << round << " " ;
+        size_t num_queries = num_gen.Uniform(1000000ull) + 100000ull;
         sleep(1);
+        cout << num_queries << "\n";
         lock.lock();
-        if (round % 15 == 0) {
+        if (round % 30 == 0) {
             cout << "round " << round << "\n";
             lb.print();
         }
 
-        for (size_t shard = 0; shard < in.num_compute * in.num_shard_per_compute; ++shard) {
-            size_t num_reads = rand() % (10000 + shard*1000);
-            size_t num_writes = rand() % (100000 + shard*1000);
-            switch (shard % 3)
-            {
-            case 0:
-                num_reads *= 2;
-                num_writes *= 2;
-                break;
-            case 1:
-                num_reads /= 4;
-                num_writes /= 4;
-            default:
-                break;
+        while(--num_queries) {
+            // if (round == 28) {
+            //     std::cout << num_queries << "\n";
+            // }
+
+            size_t key = key_gen.Skewed(30);
+            assert(key < KEY_UB);
+            if (type_gen.Uniform(100) < RW_P) {
+                lb.increment_load_info(key_to_shard(key, in.num_compute * in.num_shard_per_compute), 1, 0, (remote_gen.Next() % 100) == 1, 0);
             }
-            size_t num_remote_read = num_reads / (rand() % 1000 + 1);
-            size_t num_flushes = num_writes / 100;
-            lb.increment_load_info(shard, num_reads, num_writes, num_remote_read, num_flushes);
+            else {
+                lb.increment_load_info(key_to_shard(key, in.num_compute * in.num_shard_per_compute), 0, 1, 0, (remote_gen.Next() % 1000) == 1);
+            }
         }
-        // if (round % 15 == 0) {
-        //     lb.print();
-        // }
         lock.unlock();
+        // if (round == 28) {
+        //     std::cout << "bye\n";
+        // }
     }
 }
 
@@ -63,7 +78,7 @@ int main() {
     parse_input(in);
     mutex lock;
     TimberSaw::Load_Balancer lb(in.num_compute, in.num_shard_per_compute, lock);
-    std::thread t(load, std::ref(lb), std::ref(lock), std::ref(in));
+    std::thread t(load_generator, std::ref(lb), std::ref(lock), std::ref(in));
     
     lb.start();
 }
