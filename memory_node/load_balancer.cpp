@@ -73,7 +73,7 @@ namespace TimberSaw {
                 container.update_max_load();
 
                 if (&max_node == &container.max_node()) {
-                    container.ignore_max();
+                    container.ignore_max(mean_load);
                 }
 
                 min_stat = check_load(container.min_node().load(), mean_load);

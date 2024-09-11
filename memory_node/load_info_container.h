@@ -235,8 +235,11 @@ public:
         return shard._load.last_load == 0; // TODO better approaches?
     }
 
-    inline void ignore_max() {
+    inline void ignore_max(size_t& mean_load) {
+        mean_load *= ordered_nodes.size();
+        mean_load -= ordered_nodes.rbegin()->first;
         ordered_nodes.erase(std::prev(ordered_nodes.end()));
+        mean_load /= ordered_nodes.size();
         max_load_change = 0;
     }
     
