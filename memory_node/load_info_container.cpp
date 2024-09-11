@@ -196,41 +196,47 @@ namespace TimberSaw {
     //     }
     // }
 
-    void Load_Info_Container::increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) { 
-        // TODO add memory order, compute load increment instead to have only one FAA? maybe even just send the new load from cnode, if we use just the new load
-        // we may be able to remove the mutex and use the atomic -> it should not affect our lb that much but it is much more efficient
+    // void Load_Info_Container::increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) { 
+    //     // TODO add memory order, compute load increment instead to have only one FAA? maybe even just send the new load from cnode, if we use just the new load
+    //     // we may be able to remove the mutex and use the atomic -> it should not affect our lb that much but it is much more efficient
+    //     Shard_Info& _shard = shard_id(shard);
+    //     if (mu.try_lock_shared()) {
+    //         _shard._load.num_reads.fetch_add(num_reads);
+    //         _shard._load.num_writes.fetch_add(num_writes);
+    //         _shard._load.num_remote_reads.fetch_add(num_remote_reads);
+    //         _shard._load.num_flushes.fetch_add(num_flushes);
+    //         mu.unlock_shared();
+    //     }
+    //     else {
+    //         _shard._load.temp_num_reads.fetch_add(num_reads);
+    //         _shard._load.temp_num_writes.fetch_add(num_writes);
+    //         _shard._load.temp_num_remote_reads.fetch_add(num_remote_reads);
+    //         _shard._load.temp_num_flushes.fetch_add(num_flushes);
+    //     }
+    // }
+
+    void Load_Info_Container::increment_load_info(size_t shard, size_t added_load) { 
+        // TODO add memory order
         Shard_Info& _shard = shard_id(shard);
-        if (mu.try_lock_shared()) {
-            _shard._load.num_reads.fetch_add(num_reads);
-            _shard._load.num_writes.fetch_add(num_writes);
-            _shard._load.num_remote_reads.fetch_add(num_remote_reads);
-            _shard._load.num_flushes.fetch_add(num_flushes);
-            mu.unlock_shared();
-        }
-        else {
-            _shard._load.temp_num_reads.fetch_add(num_reads);
-            _shard._load.temp_num_writes.fetch_add(num_writes);
-            _shard._load.temp_num_remote_reads.fetch_add(num_remote_reads);
-            _shard._load.temp_num_flushes.fetch_add(num_flushes);
-        }
+        _shard._load.current_load.fetch_add(added_load);
     }
 
-    void Load_Info_Container::flush_load_changes() { // TODO add memory order
-        for(auto& shard : shards) {
-            shard._load.num_reads.fetch_add(shard._load.temp_num_reads.load());
-            shard._load.num_writes.fetch_add(shard._load.temp_num_writes.load());
-            shard._load.num_remote_reads.fetch_add(shard._load.temp_num_remote_reads.load());
-            shard._load.num_flushes.fetch_add(shard._load.temp_num_flushes.load());
+    // void Load_Info_Container::flush_load_changes() { // TODO add memory order
+    //     for(auto& shard : shards) {
+    //         shard._load.num_reads.fetch_add(shard._load.temp_num_reads.load());
+    //         shard._load.num_writes.fetch_add(shard._load.temp_num_writes.load());
+    //         shard._load.num_remote_reads.fetch_add(shard._load.temp_num_remote_reads.load());
+    //         shard._load.num_flushes.fetch_add(shard._load.temp_num_flushes.load());
 
-            shard._load.temp_num_reads.store(0);
-            shard._load.temp_num_writes.store(0);
-            shard._load.temp_num_remote_reads.store(0);
-            shard._load.temp_num_flushes.store(0);
-        }
-    }
+    //         shard._load.temp_num_reads.store(0);
+    //         shard._load.temp_num_writes.store(0);
+    //         shard._load.temp_num_remote_reads.store(0);
+    //         shard._load.temp_num_flushes.store(0);
+    //     }
+    // }
 
     void Load_Info_Container::compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load) {
-        mu.lock();
+        // mu.lock();
         updates.clear();
         ordered_nodes.clear();
         max_load_change = 0;
@@ -251,9 +257,9 @@ namespace TimberSaw {
             }
             ordered_nodes.insert({cnodes[i]._overal_load, i});
         }
-        mu.unlock();
+        // mu.unlock();
 
-        flush_load_changes();
+        // flush_load_changes();
 
         mean_load /= cnodes.size();
     }

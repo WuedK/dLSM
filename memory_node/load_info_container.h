@@ -21,26 +21,24 @@ namespace TimberSaw {
 
 struct Load_Info {
 
-    static constexpr size_t local_read_time = 1;
-    static constexpr size_t remote_read_time = 10;
-    static constexpr size_t local_write_time = 1;
-    static constexpr size_t flush_time = 100;
-    static constexpr size_t mem_table_cap_mb = 64;
+    // static constexpr size_t local_read_time = 1;
+    // static constexpr size_t remote_read_time = 10;
+    // static constexpr size_t local_write_time = 1;
+    // static constexpr size_t flush_time = 100;
+    // static constexpr size_t mem_table_cap_mb = 64;
 
-    std::atomic<size_t> num_reads{0};
-    std::atomic<size_t> num_writes{0};
-    std::atomic<size_t> num_remote_reads{0};
-    std::atomic<size_t> num_flushes{0};
+    // std::atomic<size_t> num_reads{0};
+    // std::atomic<size_t> num_writes{0};
+    // std::atomic<size_t> num_remote_reads{0};
+    // std::atomic<size_t> num_flushes{0};
 
-    std::atomic<size_t> temp_num_reads{0};
-    std::atomic<size_t> temp_num_writes{0};
-    std::atomic<size_t> temp_num_remote_reads{0};
-    std::atomic<size_t> temp_num_flushes{0};
+    // std::atomic<size_t> temp_num_reads{0};
+    // std::atomic<size_t> temp_num_writes{0};
+    // std::atomic<size_t> temp_num_remote_reads{0};
+    // std::atomic<size_t> temp_num_flushes{0};
 
-    // std::atomic<std::size_t> ip_num_reads(0);
-    // std::atomic<size_t> ip_num_writes;
-    // std::atomic<size_t> ip_num_remote_reads;
-    // std::atomic<size_t> ip_num_flushes;
+    std::atomic<size_t> current_load{0}; // accessed by other threads incrementing load
+    size_t last_load = 0; // accessed only by lb thread so no concurrent access
 
     // size_t num_files;
     // size_t size_MB;
@@ -48,23 +46,25 @@ struct Load_Info {
     // size_t num_cached_files;
     // size_t cached_size_MB;
 
-    size_t last_load = 0;
+    // size_t last_load = 0;
 
-    void compute_load_and_pass() {
-        last_load = (last_load / 2)
-                + num_reads * local_read_time 
-                + num_remote_reads * remote_read_time 
-                + num_writes * local_write_time
-                + num_flushes * flush_time;
-        num_reads = 0;
-        num_remote_reads = 0;
-        num_writes = 0;
-        num_flushes = 0;
+    void compute_load_and_pass() { //TODO memory order && do I need to make last_load atomic? -> it is accessed as write only in lb -> one writer + one reader
+        // last_load = (last_load / 2)
+        //         + num_reads * local_read_time 
+        //         + num_remote_reads * remote_read_time 
+        //         + num_writes * local_write_time
+        //         + num_flushes * flush_time;
+        // num_reads = 0;
+        // num_remote_reads = 0;
+        // num_writes = 0;
+        // num_flushes = 0;
+        last_load = current_load.exchange(0) + last_load / 2;
     }
 
     void print(char* buffer) const {
-        sprintf(buffer + strlen(buffer), "last_load: %lu, num_reads: %lu, num_writes: %lu, num_remote_reads: %lu, num_flushes: %lu\n"
-            , last_load, num_reads.load(), num_writes.load(), num_remote_reads.load(), num_flushes.load());
+        // sprintf(buffer + strlen(buffer), "last_load: %lu, num_reads: %lu, num_writes: %lu, num_remote_reads: %lu, num_flushes: %lu\n"
+        //     , last_load, num_reads.load(), num_writes.load(), num_remote_reads.load(), num_flushes.load());
+        sprintf(buffer + strlen(buffer), "last_load = %lu, current_load = %lu\n", last_load, current_load.load());
     }
 };
 
@@ -170,10 +170,10 @@ public:
 
     inline void print(char* buffer) const {
         sprintf(buffer + strlen(buffer), "cnode with id %lu has overall load of %lu and owns %lu shards:\n\n", _id, _overal_load, _shards.size());
-        // for (auto s : _shards) {
-        //     std::cout << s->_id << ", ";
-        // }
-        // printf("\n");
+        for (auto s : _shards) {
+            sprintf(buffer + strlen(buffer), "%lu, ", s->id());
+        }
+        sprintf(buffer + strlen(buffer), "\n");
     }
 
     friend class Load_Info_Container;
@@ -224,7 +224,8 @@ public:
     ~Load_Info_Container();
 
     // void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
-    void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
+    // void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
+    void increment_load_info(size_t shard, size_t added_load);
     void compute_load_and_pass(size_t& min_load, size_t& max_load, size_t& mean_load);
     void update_max_load();
     void change_owner_from_max_to_min(size_t shard_idx);
@@ -265,7 +266,7 @@ public:
     }
 
 private:
-    void flush_load_changes();
+    // void flush_load_changes();
 
 private:
     std::vector<Compute_Node_Info> cnodes;
@@ -273,7 +274,7 @@ private:
     std::vector<Owner_Ship_Transfer> updates;
     std::multimap<size_t, size_t> ordered_nodes;
     size_t max_load_change = 0;
-    std::shared_mutex mu;
+    // std::shared_mutex mu;
 };
 
 }

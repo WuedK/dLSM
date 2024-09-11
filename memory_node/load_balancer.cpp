@@ -106,10 +106,14 @@ namespace TimberSaw {
     //     container.rewrite_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);
     // }
 
-    void Load_Balancer::increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
-        container.increment_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);
-    }
+    // void Load_Balancer::increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes) {
+    //     container.increment_load_info(shard, num_reads, num_writes, num_remote_reads, num_flushes);
+    // }
     
+    void Load_Balancer::increment_load_info(size_t shard, size_t added_load) {
+        container.increment_load_info(shard, added_load);
+    }
+
     // functions for updating load info per shard and node
 
 

@@ -26,7 +26,8 @@ public:
     void set_up_new_plan(); // gets a new optimal plan and executes a protocol to make sure things are running. -> run by load_balancer or main thread?
 
     // void rewrite_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
-    void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
+    // void increment_load_info(size_t shard, size_t num_reads, size_t num_writes, size_t num_remote_reads, size_t num_flushes);
+    void increment_load_info(size_t shard, size_t added_load);
 
     void print(char* buffer) {
         // std::cout << "node info:\n";
@@ -38,10 +39,10 @@ public:
         // std::cout << "\n\n";
 
         // // std::cout << "shard info:\n";
-        // sprintf(buffer + strlen(buffer), "shard info:\n");
-        // for(size_t shard = 0; shard < container.num_shards() && shard < 10; ++shard) {
-        //     container.shard_id(shard).print(buffer);
-        // }
+        sprintf(buffer + strlen(buffer), "shard info:\n");
+        for(size_t shard = 0; shard < container.num_shards(); ++shard) {
+            container.shard_id(shard).print(buffer);
+        }
         sprintf(buffer + strlen(buffer), "_____________________________________________________\n");
         // // std::cout << "_____________________________________________________\n";
     }
