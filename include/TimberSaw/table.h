@@ -100,8 +100,10 @@ class TimberSaw_EXPORT Table {
   friend class TableCache;
 //  struct Rep;
 
-  // added block_size by Arman -> 20 September 2024
-  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, size_t* block_size = nullptr);
+  // added by Arman -> 20 September 2024
+  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, size_t* block_size);
+  // added above by Arman -> 20 September 2024
+  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&);
   static Iterator* BlockReader_async(void*, const ReadOptions&, const Slice&);
   explicit Table(Rep* rep) : rep(rep) {}
 
