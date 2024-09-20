@@ -1136,7 +1136,7 @@ class Benchmark {
       node_lower_bound += num_past_shards * number_of_key_per_shard 
                         + std::min(number_of_remainder_keys, num_past_shards);
       node_upper_bound = node_lower_bound + number_of_key_per_shard * FLAGS_fixed_compute_shards_num 
-                        + std::min(key_remaining, FLAGS_fixed_compute_shards_num);
+                        + std::min(key_remaining, (uint64_t)FLAGS_fixed_compute_shards_num);
 
       key_remaining = number_of_remainder_keys;
 
@@ -1151,8 +1151,8 @@ class Benchmark {
         key_remaining -= (key_remaining > 0);
 
         if ((rdma_mg->node_id - 1) / 2 * FLAGS_fixed_compute_shards_num <= i && i < (rdma_mg->node_id + 1) / 2 * FLAGS_fixed_compute_shards_num) {
-          LOGFC(COLOR_PURPLE, stdout, "Node %hhu Shard %llu(%llu in node): lb: %llu, ub: %llu\n"
-            (rdma_mg->node_id - 1) / 2, i, i - (rdma_mg->node_id - 1) / 2 * FLAGS_fixed_compute_shards_num
+          LOGFC(COLOR_PURPLE, stdout, "Node %hhu Shard %lu(%lu in node): lb: %lu, ub: %lu\n"
+            (rdma_mg->node_id - 1) / 2, i, i - (size_t)(rdma_mg->node_id - 1) / 2lu * (size_t)FLAGS_fixed_compute_shards_num
             , lower_bound, upper_bound);
 
           options.owned_shards->push_back(i);
