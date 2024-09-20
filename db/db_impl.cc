@@ -4243,19 +4243,19 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     // added by Arman -> 20 September 2024
     size_t kv_num_tmp = kv_num;
     size_t num_local_access = 0;
-    if (kv_num_tmp > MEMTABLE_SEQ_SIZE) {
-      size_t num_full_tables = kv_num_tmp / MEMTABLE_SEQ_SIZE;
-      num_local_access += num_full_tables * MEMTABLE_SEQ_SIZE * floor_lg2(std::max(1, MEMTABLE_SEQ_SIZE / 2));
-      kv_num_tmp = kv_num % MEMTABLE_SEQ_SIZE;
+    if (kv_num_tmp > (size_t)MEMTABLE_SEQ_SIZE) {
+      size_t num_full_tables = kv_num_tmp / (size_t)MEMTABLE_SEQ_SIZE;
+      num_local_access += num_full_tables * (size_t)MEMTABLE_SEQ_SIZE * floor_lg2(std::max(1lu, (size_t)MEMTABLE_SEQ_SIZE / 2lu));
+      kv_num_tmp = kv_num % (size_t)MEMTABLE_SEQ_SIZE;
     }
 
-    if (kv_num_tmp + mem->Getlargest_seq > mem->Getlargest_seq_supposed) {
-      size_t remainder = mem->Getlargest_seq_supposed - mem->Getlargest_seq;
-      num_local_access += floor_lg2(std::max(1, (mem->Getlargest_seq() - mem->GetFirstseq()) + (remainder / 2))) * remainder; // local access in the current table
-      num_local_access += floor_lg2(std::max(1, (kv_num_tmp - remainder) / 2)) * (kv_num_tmp - remainder); // local access in new table
+    if (kv_num_tmp + mem->Getlargest_seq() > mem->Getlargest_seq_supposed()) {
+      size_t remainder = mem->Getlargest_seq_supposed() - mem->Getlargest_seq();
+      num_local_access += floor_lg2(std::max(1lu, (mem->Getlargest_seq() - mem->GetFirstseq()) + (remainder / 2))) * remainder; // local access in the current table
+      num_local_access += floor_lg2(std::max(1lu, (kv_num_tmp - remainder) / 2)) * (kv_num_tmp - remainder); // local access in new table
     }
     else {
-      num_local_access += floor_lg2(std::max(1, (mem->Getlargest_seq() - mem->GetFirstseq()) + (kv_num_tmp / 2))) * kv_num_tmp;
+      num_local_access += floor_lg2(std::max(1lu, (mem->Getlargest_seq() - mem->GetFirstseq()) + (kv_num_tmp / 2))) * kv_num_tmp;
     }
 
     load.increment_local_access(num_local_access);

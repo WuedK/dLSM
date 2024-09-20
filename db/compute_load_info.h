@@ -14,7 +14,7 @@ namespace TimberSaw {
 
 class Cmp_Side_Load_Info {
 public:
-    explicit Cmp_Side_Load_Info() : num_lreads(0), num_rreads(0), num_writes(0), num_flushes(0) {}
+    explicit Cmp_Side_Load_Info() : num_laccess(0), num_rreads(0), num_flushes(0) {}
 
     // void increment_lreads(size_t num = 1) {
     //     num_lreads.fetch_add(num);
@@ -22,12 +22,12 @@ public:
 
     void increment_local_access(size_t num = 1) {
         // num_laccess.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num local access: %llu", num_laccess.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "num local access: %lu", num_laccess.fetch_add(num) + num);
     }
 
     void increment_rreads(size_t num = 1) {
         // num_rreads.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num remote reads: %llu",num_rreads.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "num remote reads: %lu",num_rreads.fetch_add(num) + num);
     }
 
     // void increment_lwrites(size_t num = 1) {
@@ -36,7 +36,7 @@ public:
 
     void increment_flushes(size_t num = 1) {
         // num_flushes.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num flushes: %llu", num_flushes.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "num flushes: %lu", num_flushes.fetch_add(num) + num);
     }
 
     size_t compute_load() {
@@ -50,7 +50,7 @@ public:
             //  + num_writes.exchange(0) * local_write_time 
              + num_flushes.exchange(0) * flush_time; 
 
-        LOGFC(COLOR_CYAN, stdout, "load incremented by: %llu", load);
+        LOGFC(COLOR_CYAN, stdout, "load incremented by: %lu", load);
 
         return load;
     }
