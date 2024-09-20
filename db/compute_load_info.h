@@ -5,7 +5,7 @@
 
 #include "db/memtable.h"
 
-#include "util/logging.h"
+#include "util/testlog.h"
 
 #include <stddef.h>
 #include <atomic>
