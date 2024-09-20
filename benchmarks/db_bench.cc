@@ -1152,7 +1152,7 @@ class Benchmark {
 
         if ((rdma_mg->node_id - 1) / 2 * FLAGS_fixed_compute_shards_num <= i && i < (rdma_mg->node_id + 1) / 2 * FLAGS_fixed_compute_shards_num) {
           LOGFC(COLOR_PURPLE, stdout, "Node %hhu Shard %lu(%lu in node): lb: %lu, ub: %lu\n"
-            (rdma_mg->node_id - 1) / 2, i
+            , (rdma_mg->node_id - 1) / 2, i
             , i - (size_t)(((rdma_mg->node_id - 1) / 2) * (size_t)FLAGS_fixed_compute_shards_num)
             , lower_bound, upper_bound);
 
