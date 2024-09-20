@@ -135,7 +135,7 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     // if (load_balancer != nullptr) {
     //   delete load_balancer;
     //   load_balancer = nullptr;
-    }
+    //}
   }
 
 //  void TimberSaw::Memory_Node_Keeper::Schedule(void (*background_work_function)(void*),
