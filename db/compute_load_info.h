@@ -21,13 +21,13 @@ public:
     // }
 
     void increment_local_access(size_t num = 1) {
-        num_laccess.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num local access: %llu", num_laccess.load());
+        // num_laccess.fetch_add(num);
+        LOGFC(COLOR_CYAN, stdout, "num local access: %llu", num_laccess.fetch_add(num) + num);
     }
 
     void increment_rreads(size_t num = 1) {
-        num_rreads.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num remote reads: %llu", num_rreads.load());
+        // num_rreads.fetch_add(num);
+        LOGFC(COLOR_CYAN, stdout, "num remote reads: %llu",num_rreads.fetch_add(num) + num);
     }
 
     // void increment_lwrites(size_t num = 1) {
@@ -35,8 +35,8 @@ public:
     // }
 
     void increment_flushes(size_t num = 1) {
-        num_flushes.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num flushes: %llu", num_flushes.load());
+        // num_flushes.fetch_add(num);
+        LOGFC(COLOR_CYAN, stdout, "num flushes: %llu", num_flushes.fetch_add(num) + num);
     }
 
     size_t compute_load() {
