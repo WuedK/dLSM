@@ -91,8 +91,13 @@ TableCache::~TableCache() {
 
 Status TableCache::FindTable(
     const std::shared_ptr<RemoteMemTableMetaData>& Remote_memtable_meta,
-    Cache::Handle** handle) {
+    Cache::Handle** handle, bool* cache_miss) { // added cache_miss by Arman -> 20 September 2024
   Status s = Status::OK();
+  // added by Arman -> 20 September 2024
+  if (!cache_miss) {
+    *cache_miss = false;
+  }
+  // added above by Arman -> 20 September 2024
 //  char buf[sizeof(Remote_memtable_meta->number) + sizeof(Remote_memtable_meta->creator_node_id)];
 //  EncodeFixed64(buf, Remote_memtable_meta->number);
 //  memcpy(buf + sizeof(Remote_memtable_meta->number), &Remote_memtable_meta->creator_node_id,
@@ -117,6 +122,11 @@ Status TableCache::FindTable(
     *handle = cache_->Lookup(key);
     if (*handle == nullptr) {
 //      printf("Cache misses!!!!!!!!!!!!!!!!\n");
+      // added by Arman -> 20 September 2024
+      if (!cache_miss) {
+        *cache_miss = true;
+      }
+      // added above by Arman -> 20 September 2024
       Table* table = nullptr;
 //          printf("Did not find the table in the table_cache, file number is %lu \n ", Remote_memtable_meta->number);
       if (s.ok()) {
@@ -285,17 +295,18 @@ Status TableCache::Get(const ReadOptions& options,
                        std::shared_ptr<RemoteMemTableMetaData> f,
                        const Slice& k, void* arg,
                        void (*handle_result)(void*, const Slice&,
-                                             const Slice&)) {
+                                             const Slice&), bool* cache_miss, size_t* mem_access) {
+                                              // added mem_access and cache_miss by Arman -> 20 September 2024
 #ifdef PROCESSANALYSIS
   auto start = std::chrono::high_resolution_clock::now();
 #endif
   Cache::Handle* handle = nullptr;
   //TODO: not let concurrent thread finding the same tale and inserting the same
   // index block to the table_cache
-  Status s = FindTable(f, &handle);
+  Status s = FindTable(f, &handle, cache_miss); // added cache_miss by Arman -> 20 September 2024
   if (s.ok()) {
     Table* t = reinterpret_cast<SSTable*>(cache_->Value(handle))->table_compute;
-    s = t->InternalGet(options, k, arg, handle_result);
+    s = t->InternalGet(options, k, arg, handle_result, mem_access); // added mem_access by Arman -> 20 September 2024
     //if you want to bypass the lock in cache then commet the code below
     cache_->Release(handle);
   }

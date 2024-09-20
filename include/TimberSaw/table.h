@@ -100,7 +100,8 @@ class TimberSaw_EXPORT Table {
   friend class TableCache;
 //  struct Rep;
 
-  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&);
+  // added block_size by Arman -> 20 September 2024
+  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, size_t* block_size = nullptr);
   static Iterator* BlockReader_async(void*, const ReadOptions&, const Slice&);
   explicit Table(Rep* rep) : rep(rep) {}
 
@@ -109,7 +110,7 @@ class TimberSaw_EXPORT Table {
   // that key is not present.
   Status InternalGet(const ReadOptions&, const Slice& key, void* arg,
                      void (*handle_result)(void* arg, const Slice& k,
-                                           const Slice& v));
+                                           const Slice& v), size_t* mem_access = nullptr); // added mem_access by Arman -> 20 September 2024
 
   void ReadMeta(const Footer& footer);
   void ReadFilter();

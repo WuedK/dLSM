@@ -60,7 +60,7 @@ class MemTableListVersion {
   // If any operation was found for this key, its most recent sequence number
   // will be stored in *seq on success (regardless of whether true/false is
   // returned).  Otherwise, *seq will be set to kMaxSequenceNumber.
-  bool Get(const LookupKey& key, std::string* value,Status* s);
+  bool Get(const LookupKey& key, std::string* value,Status* s, size_t* num_mem_access = nullptr); // added num_mem_access by Arman -> 20 September 2024
 
 //  bool Get(const LookupKey& key, std::string* value, std::string* timestamp,
 //           Status* s, MergeContext* merge_context,
@@ -151,7 +151,7 @@ class MemTableListVersion {
   bool TrimHistory(size_t usage);
 
   bool GetFromList(std::list<MemTable*>* list, const LookupKey& key,
-                   std::string* value, Status* s);
+                   std::string* value, Status* s, size_t* num_mem_access = nullptr);// added num_mem_access by Arman -> 20 September 2024
 
   void AddMemTable(MemTable* m);
 

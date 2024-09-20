@@ -40,6 +40,7 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
+#include "util/floor_lg2.h" // added by Arman -> 20 September 2024
 
 namespace TimberSaw {
 
@@ -187,7 +188,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       versions_(new VersionSet(dbname_, &options_, table_cache_,
                                &internal_comparator_, &superversion_memlist_mtx)),
       super_version_number_(0),
-      super_version(nullptr), local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle))
+      super_version(nullptr), local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)), 
+      sharded(false) // added by Arman -> 20 September 2024
 #ifdef PROCESSANALYSIS
       ,Total_time_elapse(0),
       flush_times(0)
@@ -322,7 +324,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname,
                                &internal_comparator_, &superversion_memlist_mtx)),
       super_version_number_(0),
       super_version(nullptr), local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)),
-      shard_target_node_id(0)
+      shard_target_node_id(0), // added by Arman?
+      sharded(true) // added by Arman -> 20 September 2024
 {
 
   std::shared_ptr<RDMA_Manager> rdma_mg = env_->rdma_mg;
@@ -4001,6 +4004,8 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
   return versions_->MaxNextLevelOverlappingBytes();
 }
 
+
+
 Status DBImpl::Get(const ReadOptions& options, const Slice& key,
                    std::string* value) {
   Status s;
@@ -4027,14 +4032,24 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
 
+    load.increment_local_access(floor_lg2(mem->Getlargest_seq() - mem->GetFirstseq())); // added by Arman -> 20 September 2024
+    size_t num_acc = 0; // added by Arman -> 20 September 2024
     if (mem->Get(lkey, value, &s)) {
+      // mem->Getlargest_seq() - mem->GetFirstseq()
       // Done
-    } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
+    } else if (imm != nullptr && imm->Get(lkey, value, &s, &num_acc)) { // added num_acc by Arman -> 20 September 2024
+      // imm->memlist_.size() * MEMTABLE_SEQ_SIZE
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
+      load.increment_rreads(stats.cache_miss); // added by Arman -> 20 September 2024
+      load.increment_local_access(stats.mem_access); // added by Arman -> 20 September 2024
 //      have_stat_update = true;
     }
+    // added by Arman -> 20 September 2024
+    if (num_acc > 0)
+      load.increment_local_access(num_acc);
+      // added above by Arman -> 20 September 2024
 //    undefine_mutex.Lock();
   }
   // TODO keep the file compaction. we remove it as we want.
@@ -4172,6 +4187,8 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 //
 //  return status;
 //}
+
+
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 //  Writer w(&undefine_mutex);
 //  w.batch = updates;
@@ -4187,6 +4204,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   size_t kv_num = WriteBatchInternal::Count(updates);
   assert(kv_num == 1);
   uint64_t sequence = versions_->AssignSequnceNumbers(kv_num);
+  // load.increment_lwrites(kv_num);
   //todo: remove
 //  kv_counter0.fetch_add(1);
   MemTable* mem;
@@ -4221,6 +4239,28 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
 //    }
     assert(sequence <= mem->Getlargest_seq_supposed() && sequence >= mem->GetFirstseq());
     status = WriteBatchInternal::InsertInto(updates, mem);
+    
+    // added by Arman -> 20 September 2024
+    size_t kv_num_tmp = kv_num;
+    size_t num_local_access = 0;
+    if (kv_num_tmp > MEMTABLE_SEQ_SIZE) {
+      size_t num_full_tables = kv_num_tmp / MEMTABLE_SEQ_SIZE;
+      num_local_access += num_full_tables * MEMTABLE_SEQ_SIZE * floor_lg2(std::max(1, MEMTABLE_SEQ_SIZE / 2));
+      kv_num_tmp = kv_num % MEMTABLE_SEQ_SIZE;
+    }
+
+    if (kv_num_tmp + mem->Getlargest_seq > mem->Getlargest_seq_supposed) {
+      size_t remainder = mem->Getlargest_seq_supposed - mem->Getlargest_seq;
+      num_local_access += floor_lg2(std::max(1, (mem->Getlargest_seq() - mem->GetFirstseq()) + (remainder / 2))) * remainder; // local access in the current table
+      num_local_access += floor_lg2(std::max(1, (kv_num_tmp - remainder) / 2)) * (kv_num_tmp - remainder); // local access in new table
+    }
+    else {
+      num_local_access += floor_lg2(std::max(1, (mem->Getlargest_seq() - mem->GetFirstseq()) + (kv_num_tmp / 2))) * kv_num_tmp;
+    }
+
+    load.increment_local_access(num_local_access);
+    // added above by Arman -> 20 September 2024
+
     mem->increase_seq_count(kv_num);
 #if defined(LOG_TYPE) && LOG_TYPE == 0
     std::unique_lock<std::mutex> l(log_mtx);
@@ -4330,6 +4370,9 @@ Status DBImpl::PickupTableToWrite(bool force, uint64_t seq_num, MemTable*& mem_r
         temp_mem->SetLargestSeq(last_mem_seq + MEMTABLE_SEQ_SIZE);
         temp_mem->Ref();
         mem_r->SetFlushState(MemTable::FLUSH_REQUESTED);
+
+        load.increment_flushes(1); // added by Arman -> 20 September 2024
+
         mem_.store(temp_mem);
         //set the flush flag for imm
         assert(imm_.current_memtable_num() <= config::Immutable_StopWritesTrigger);

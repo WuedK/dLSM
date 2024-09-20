@@ -133,7 +133,13 @@ enum RDMA_Command_Type {
   retrieve_log_serialized_data,
   request_cpu_utilization,
   create_cpu_refresher,
-  cpu_utilization_heartbeat
+  cpu_utilization_heartbeat,
+  // added by Arman -> 20 September 2024
+  load_update, // sent from cnode to mnode
+  ownership_transfer_flush_shards, // sent from mnode to cnode
+  ownership_transfer_flush_ack, // sent from cnode to mnode
+  ownership_transfer_init_shards // sent from mnode to cnode
+  // above added by Arman -> 20 September 2024
 };
 enum file_type { log_type, others };
 struct fs_sync_command {

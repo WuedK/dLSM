@@ -8,6 +8,8 @@
 #include "db/dbformat.h"
 #include "db/log_writer.h"
 #include "db/snapshot.h"
+#include "db/compute_load_info.h" // added by Arman -> 20 September 2024
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -340,6 +342,8 @@ class DBImpl : public DB{
   std::vector<std::thread> main_comm_threads;
   uint8_t shard_target_node_id = 0;
   uint8_t shard_id = 0;
+  Cmp_Side_Load_Info load; // added by Arman -> 20 September 2024
+  const bool sharded; // added by Arman -> 20 September 2024
   std::atomic<bool> level_0_compaction_in_progress = false;
   // Add for cpu utilization refreshing
   //TODO: (chuqing) if multiple servers

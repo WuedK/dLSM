@@ -84,7 +84,8 @@ class TableCache {
   Status Get(const ReadOptions& options,
              std::shared_ptr<RemoteMemTableMetaData> f, const Slice& k,
              void* arg,
-             void (*handle_result)(void*, const Slice&, const Slice&));
+             void (*handle_result)(void*, const Slice&, const Slice&), 
+             bool* cache_miss = nullptr, size_t* mem_access = nullptr);// added cache_miss and mem_access by Arman -> 20 September 2024
 
   // Evict any entry for the specified file number
   void Evict(uint64_t file_number, uint8_t creator_node_id);
@@ -108,7 +109,7 @@ class TableCache {
   }
  private:
   Status FindTable(const std::shared_ptr<RemoteMemTableMetaData>& Remote_memtable_meta,
-                   Cache::Handle** handle);
+                   Cache::Handle** handle, bool* cache_miss = nullptr); // added cache_miss by Arman -> 20 September 2024
   Status FindTable_MemorySide(
       const std::shared_ptr<RemoteMemTableMetaData>& Remote_memtable_meta,
       Table_Memory_Side*& table);

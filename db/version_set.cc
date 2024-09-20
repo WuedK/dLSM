@@ -405,8 +405,19 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
       state->last_file_read = f;
       state->last_file_read_level = level;
 
+      // added by Arman -> 20 September 2024
+      bool cache_miss;
+      size_t mem_access = 0;
+      // added above by Arman -> 20 September 2024
+
       state->s = state->vset->table_cache_->Get(*state->options, f,
-          state->ikey, &state->saver, SaveValue);
+          state->ikey, &state->saver, SaveValue, &cache_miss, &mem_access); // added cache_miss and mem_access by Arman -> 20 September 2024
+
+      // added by Arman -> 20 September 2024
+      state->stats->cache_miss += cache_miss;
+      state->stats->mem_access += mem_access;
+      // added above by Arman -> 20 September 2024
+
       if (!state->s.ok()) {
         state->found = true;
         return false;

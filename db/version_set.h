@@ -117,6 +117,11 @@ class Version {
   struct GetStats {
     std::shared_ptr<RemoteMemTableMetaData> seek_file;
     int seek_file_level;
+
+    // added by Arman -> 20 September 2024
+    size_t cache_miss = 0;
+    size_t mem_access = 0;
+    // added above by Arman -> 20 September 2024
   };
 //  std::shared_ptr<Subversion> subversion;
 

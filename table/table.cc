@@ -17,6 +17,7 @@
 #include "table/format.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
+#include "util/floor_lg2.h" // added by Arman -> 20 September 2024
 
 #include "full_filter_block.h"
 #include "byte_addressable_RA_iterator.h"
@@ -125,7 +126,7 @@ static void ReleaseBlock(void* arg, void* h) {
 // into an iterator over the contents of the corresponding block.
 // Note the block reader no does not support muliti compute nodes.
 Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
-                             const Slice& index_value) {
+                             const Slice& index_value, size_t* block_size) { // added size_t* block_size by Arman -> 20 September 2024
   Table* table = reinterpret_cast<Table*>(arg);
   Cache* block_cache = table->rep->options.block_cache;
   Block* block = nullptr;
@@ -200,6 +201,12 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
 
   Iterator* iter;
   if (block != nullptr) {
+    // added by Arman -> 20 September 2024
+    if (block_size) {
+      *block_size = block->size();
+    }
+    // above added by Arman -> 20 September 2024
+    
     iter = block->NewIterator(table->rep->options.comparator);
     if (cache_handle == nullptr) {
       iter->RegisterCleanup(&DeleteBlock, block, nullptr);
@@ -349,9 +356,10 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
 //Iterator* Table::NewSEQIterator(const ReadOptions& options) const {
 //
 //}
+// added mem_accesss by Arman -> 20 September 2024
 Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
                           void (*handle_result)(void*, const Slice&,
-                                                const Slice&)) {
+                                                const Slice&), size_t* mem_access) {
   Status s;
   FullFilterBlockReader* filter = rep->filter;
   if (filter != nullptr && !filter->KeyMayMatch(ExtractUserKey(k))) {
@@ -396,6 +404,10 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
 #ifdef PROCESSANALYSIS
       auto start = std::chrono::high_resolution_clock::now();
 #endif
+      // added by Arman -> 20 September 2024
+      if (mem_access)
+        mem_access += floor_lg2(rep->index_block->size());
+      // added above by Arman -> 20 September 2024
       iiter->Seek(k);//binary search for block index
 #ifdef PROCESSANALYSIS
       auto stop = std::chrono::high_resolution_clock::now();
@@ -413,7 +425,14 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
 
         start = std::chrono::high_resolution_clock::now();
 #endif
-        Iterator* block_iter = BlockReader(this, options, iiter->value());
+        
+        size_t block_size = 0;// added by Arman -> 20 September 2024
+        Iterator* block_iter = BlockReader(this, options, iiter->value(), &block_size);// added block_size by Arman -> 20 September 2024
+        // added by Arman -> 20 September 2024
+        if (mem_access)
+          mem_access += floor_lg2(block_size);
+        // added above by Arman -> 20 September 2024
+
 #ifdef PROCESSANALYSIS
         stop = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);

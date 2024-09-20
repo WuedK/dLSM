@@ -20,6 +20,7 @@
 #include "db/table_cache.h"
 #include "table/table_builder_computeside.h"
 #include "table/table_builder_bacs.h"
+#include "util/floor_lg2.h"// added by Arman -> 20 September 2024
 namespace TimberSaw {
 
 //std::mutex MemTableList::imm_mtx;
@@ -119,8 +120,8 @@ int MemTableList::NumFlushed() const {
 // Return the most recent value found, if any.
 // Operands stores the list of merge operations to apply, so far.
 bool MemTableListVersion::Get(const LookupKey& key, std::string* value,
-                              Status* s) {
-  return GetFromList(&memlist_, key, value, s);
+                              Status* s, size_t* num_mem_access) { // added num_mem_access by Arman -> 20 September 2024
+  return GetFromList(&memlist_, key, value, s, num_mem_access); // added num_mem_access by Arman -> 20 September 2024
 }
 
 //void MemTableListVersion::MultiGet(const ReadOptions& read_options,
@@ -159,7 +160,7 @@ bool MemTableListVersion::Get(const LookupKey& key, std::string* value,
 
 bool MemTableListVersion::GetFromList(std::list<MemTable*>* list,
                                       const LookupKey& key, std::string* value,
-                                      Status* s) {
+                                      Status* s, size_t* num_mem_access) { // added num_mem_access by Arman -> 20 September 2024
 //#ifdef GETANALYSIS
 //  auto start = std::chrono::high_resolution_clock::now();
 //#endif
@@ -167,6 +168,11 @@ bool MemTableListVersion::GetFromList(std::list<MemTable*>* list,
     SequenceNumber current_seq = kMaxSequenceNumber;
 
     bool done = memtable->Get(key, value, s);
+    // added by Arman -> 20 September 2024
+    if (num_mem_access) {
+      *num_mem_access += floor_lg2(memtable->Getlargest_seq() - memtable->GetFirstseq());
+    }
+    // added above by Arman -> 20 September 2024
 
     if (done) {
       return true;
