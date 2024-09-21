@@ -408,7 +408,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
       state->last_file_read_level = level;
 
       // added by Arman -> 20 September 2024
-      bool cache_miss;
+      bool cache_miss = false;
       size_t mem_access = 0;
       // added above by Arman -> 20 September 2024
 

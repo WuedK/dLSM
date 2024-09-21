@@ -114,13 +114,14 @@ Status TableCache::FindTable(
 //  EncodeFixed64(buf, Remote_memtable_meta->number);
   Slice key((char*)&Remote_memtable_meta->number, sizeof(uint64_t));
 
-
+  LOGFC(COLOR_GREEN, stdout, "looking up key...\n");
   *handle = cache_->Lookup(key);
   if (*handle == nullptr) {
     // TODO: implement a hash lock to reduce the contention here, otherwise multiple
     // readers may get the same table and RDMA read the index block several times.
     uint64_t hash_value = Remote_memtable_meta->number%32;
     hash_mtx[hash_value].lock();
+    LOGFC(COLOR_YELLOW, stdout, "looking up key...\n");
     *handle = cache_->Lookup(key);
     if (*handle == nullptr) {
 //      printf("Cache misses!!!!!!!!!!!!!!!!\n");
@@ -306,6 +307,7 @@ Status TableCache::Get(const ReadOptions& options,
   Cache::Handle* handle = nullptr;
   //TODO: not let concurrent thread finding the same tale and inserting the same
   // index block to the table_cache
+  LOGFC(COLOR_GREEN, stdout, "Finding SStable...\n");
   Status s = FindTable(f, &handle, cache_miss); // added cache_miss by Arman -> 20 September 2024
   if (s.ok()) {
     LOGFC(COLOR_GREEN, stdout, "status: is ok -> getting internal key...\n");
