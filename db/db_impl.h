@@ -87,7 +87,7 @@ class DBImpl : public DB{
 #endif
  public:
   DBImpl(const Options& options, const std::string& dbname);
-  DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id
+  DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id,
          const std::string ub, const std::string lb);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;

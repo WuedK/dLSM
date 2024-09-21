@@ -293,7 +293,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     printf("Refresher start\n");
 }
 //This functon does not contain the creation of the client message handling thread
-DBImpl::DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id
+DBImpl::DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id,
                const std::string ub, const std::string lb)
     : upper_bound(ub),
       lower_bound(lb),
