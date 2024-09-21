@@ -28,7 +28,7 @@ public:
 
     void increment_rreads(size_t num = 1) {
         // num_rreads.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num remote reads: %lu\n", shard_id,num_rreads.fetch_add(num) + num);
+        LOGFC(COLOR_YELLOW, stdout, "shard_id %hhu: num remote reads: %lu\n", shard_id,num_rreads.fetch_add(num) + num);
     }
 
     // void increment_lwrites(size_t num = 1) {
@@ -37,7 +37,7 @@ public:
 
     void increment_flushes(size_t num = 1) {
         // num_flushes.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num flushes: %lu\n", shard_id, num_flushes.fetch_add(num) + num);
+        LOGFC(COLOR_RED, stdout, "shard_id %hhu: num flushes: %lu\n", shard_id, num_flushes.fetch_add(num) + num);
     }
 
     size_t compute_load() {
