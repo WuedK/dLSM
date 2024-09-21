@@ -8,13 +8,14 @@
 #include "util/testlog.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <atomic>
 
 namespace TimberSaw {
 
 class Cmp_Side_Load_Info {
 public:
-    explicit Cmp_Side_Load_Info(uint_8 id) : num_laccess(0), num_rreads(0), num_flushes(0), shard_id(id) {}
+    explicit Cmp_Side_Load_Info(uint8_t id) : num_laccess(0), num_rreads(0), num_flushes(0), shard_id(id) {}
 
     // void increment_lreads(size_t num = 1) {
     //     num_lreads.fetch_add(num);
