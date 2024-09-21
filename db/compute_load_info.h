@@ -14,7 +14,7 @@ namespace TimberSaw {
 
 class Cmp_Side_Load_Info {
 public:
-    explicit Cmp_Side_Load_Info() : num_laccess(0), num_rreads(0), num_flushes(0) {}
+    explicit Cmp_Side_Load_Info(uint_8 id) : num_laccess(0), num_rreads(0), num_flushes(0), shard_id(id) {}
 
     // void increment_lreads(size_t num = 1) {
     //     num_lreads.fetch_add(num);
@@ -22,12 +22,12 @@ public:
 
     void increment_local_access(size_t num = 1) {
         // num_laccess.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num local access: %lu", num_laccess.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num local access: %lu\n", shard_id, num_laccess.fetch_add(num) + num);
     }
 
     void increment_rreads(size_t num = 1) {
         // num_rreads.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num remote reads: %lu",num_rreads.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num remote reads: %lu\n", shard_id,num_rreads.fetch_add(num) + num);
     }
 
     // void increment_lwrites(size_t num = 1) {
@@ -36,7 +36,7 @@ public:
 
     void increment_flushes(size_t num = 1) {
         // num_flushes.fetch_add(num);
-        LOGFC(COLOR_CYAN, stdout, "num flushes: %lu", num_flushes.fetch_add(num) + num);
+        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num flushes: %lu\n", shard_id, num_flushes.fetch_add(num) + num);
     }
 
     size_t compute_load() {
@@ -50,7 +50,7 @@ public:
             //  + num_writes.exchange(0) * local_write_time 
              + num_flushes.exchange(0) * flush_time; 
 
-        LOGFC(COLOR_CYAN, stdout, "load incremented by: %lu", load);
+        LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: load incremented by: %lu\n", shard_id, load);
 
         return load;
     }
@@ -72,6 +72,7 @@ private:
     std::atomic<size_t> num_laccess;
     std::atomic<size_t> num_rreads;
     std::atomic<size_t> num_flushes;
+    const uint8_t shard_id;
 };
 
 }

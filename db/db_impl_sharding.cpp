@@ -25,7 +25,7 @@ DBImpl_Sharding::DBImpl_Sharding(const Options& options, const std::string& dbna
       // to overload the function. The overloaded initial function will not create message
       // handling thread.
       auto sharded_db =
-          new DBImpl(options, dbname, Shard_Info[iter].second, Shard_Info[iter].first);
+          new DBImpl(options, dbname, iter, Shard_Info[iter].second, Shard_Info[iter].first);
       shards_pool.insert({Shard_Info[iter].second, sharded_db});
     }
     int i = 0;

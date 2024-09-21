@@ -189,7 +189,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_comparator_, &superversion_memlist_mtx)),
       super_version_number_(0),
       super_version(nullptr), local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)), 
-      sharded(false) // added by Arman -> 20 September 2024
+      sharded(false), load(0) // added by Arman -> 20 September 2024
 #ifdef PROCESSANALYSIS
       ,Total_time_elapse(0),
       flush_times(0)
@@ -293,7 +293,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     printf("Refresher start\n");
 }
 //This functon does not contain the creation of the client message handling thread
-DBImpl::DBImpl(const Options& raw_options, const std::string& dbname,
+DBImpl::DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id
                const std::string ub, const std::string lb)
     : upper_bound(ub),
       lower_bound(lb),
@@ -325,7 +325,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname,
       super_version_number_(0),
       super_version(nullptr), local_sv_(new ThreadLocalPtr(&SuperVersionUnrefHandle)),
       shard_target_node_id(0), // added by Arman?
-      sharded(true) // added by Arman -> 20 September 2024
+      sharded(true), load(id), shard_id(id) // added by Arman -> 20 September 2024
 {
 
   std::shared_ptr<RDMA_Manager> rdma_mg = env_->rdma_mg;
@@ -2988,11 +2988,11 @@ void DBImpl::client_message_polling_and_handling_thread(std::string q_id) {
 //    }
 }
 void DBImpl::WaitForComputeMessageHandlingThread(uint8_t target_memory_id,
-                                                    uint8_t shard_id_) {
+                                                    uint8_t local_shard_id_) {
   std::shared_ptr<RDMA_Manager> rdma_mg = env_->rdma_mg;
-  assert(target_memory_id == 2*(shard_id_%rdma_mg->memory_nodes.size()));
+  assert(target_memory_id == 2*(local_shard_id_%rdma_mg->memory_nodes.size()));
   shard_target_node_id = target_memory_id;
-  shard_id = shard_id_;
+  local_shard_id = local_shard_id_;
 
   mtx_imme = rdma_mg->mtx_imme_map.at(shard_target_node_id);
   imm_gen = rdma_mg->imm_gen_map.at(shard_target_node_id);
@@ -3002,7 +3002,7 @@ void DBImpl::WaitForComputeMessageHandlingThread(uint8_t target_memory_id,
 
   while(rdma_mg->RPC_handler_thread_ready_num.load() != rdma_mg->memory_nodes.size());
 
-  if (RDMA_Manager::node_id == 1 && shard_id == 0){
+  if (RDMA_Manager::node_id == 1 && local_shard_id == 0){
     // every memory ndoe only get synced option one time from compute node 1
     for (int i = 0; i <  rdma_mg->memory_nodes.size(); ++i) {
       sync_option_to_remote(2*i);

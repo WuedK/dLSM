@@ -87,7 +87,7 @@ class DBImpl : public DB{
 #endif
  public:
   DBImpl(const Options& options, const std::string& dbname);
-  DBImpl(const Options& raw_options, const std::string& dbname,
+  DBImpl(const Options& raw_options, const std::string& dbname, uint8_t id
          const std::string ub, const std::string lb);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
@@ -148,7 +148,7 @@ class DBImpl : public DB{
   // we do?
   void client_message_polling_and_handling_thread(std::string q_id);
   void WaitForComputeMessageHandlingThread(uint8_t target_memory_id,
-                                              uint8_t shard_id_);
+                                              uint8_t local_shard_id_);
   std::string upper_bound;
   std::string lower_bound;
   // long double server_cpu_percent = 0.0;
@@ -340,8 +340,9 @@ class DBImpl : public DB{
 //  std::unique_ptr<ThreadLocalPtr> local_sv_;
   ThreadLocalPtr* local_sv_;
   std::vector<std::thread> main_comm_threads;
-  uint8_t shard_target_node_id = 0;
+  uint8_t shard_target_node_id = 0; // not used
   uint8_t shard_id = 0;
+  uint8_t local_shard_id = 0;
   Cmp_Side_Load_Info load; // added by Arman -> 20 September 2024
   const bool sharded; // added by Arman -> 20 September 2024
   std::atomic<bool> level_0_compaction_in_progress = false;
