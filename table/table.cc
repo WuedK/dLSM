@@ -18,6 +18,7 @@
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
 #include "util/floor_lg2.h" // added by Arman -> 20 September 2024
+#include "util/testlog.h"
 
 #include "full_filter_block.h"
 #include "byte_addressable_RA_iterator.h"
@@ -461,6 +462,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
   FullFilterBlockReader* filter = rep->filter;
   if (filter != nullptr && !filter->KeyMayMatch(ExtractUserKey(k))) {
     // Not found
+    LOGFC(COLOR_PURPLE, stdout, "bloom filter!\n");
 #ifdef PROCESSANALYSIS
     int dummy = 0;
     TableCache::filtered.fetch_add(1);

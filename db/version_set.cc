@@ -21,6 +21,8 @@
 #include "util/coding.h"
 #include "util/logging.h"
 
+#include "util/testlog.h"
+
 namespace TimberSaw {
 #ifdef PROCESSANALYSIS
 std::atomic<uint64_t> VersionSet::GetTimeElapseSum = 0;

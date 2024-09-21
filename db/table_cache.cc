@@ -13,6 +13,8 @@
 
 #include "util/coding.h"
 
+#include "util/testlog.h"
+
 namespace TimberSaw {
 #ifdef PROCESSANALYSIS
 std::atomic<uint64_t> TableCache::GetTimeElapseSum = 0;
@@ -123,6 +125,7 @@ Status TableCache::FindTable(
     if (*handle == nullptr) {
 //      printf("Cache misses!!!!!!!!!!!!!!!!\n");
       // added by Arman -> 20 September 2024
+      LOGFC(COLOR_RED, stdout, "cache miss!\n");
       if (!cache_miss) {
         *cache_miss = true;
       }
@@ -305,6 +308,7 @@ Status TableCache::Get(const ReadOptions& options,
   // index block to the table_cache
   Status s = FindTable(f, &handle, cache_miss); // added cache_miss by Arman -> 20 September 2024
   if (s.ok()) {
+    LOGFC(COLOR_GREEN, stdout, "status: is ok -> getting internal key...\n");
     Table* t = reinterpret_cast<SSTable*>(cache_->Value(handle))->table_compute;
     s = t->InternalGet(options, k, arg, handle_result, mem_access); // added mem_access by Arman -> 20 September 2024
     //if you want to bypass the lock in cache then commet the code below
