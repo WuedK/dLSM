@@ -276,7 +276,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
                                  bool (*func)(void*, int,
                                               std::shared_ptr<RemoteMemTableMetaData>)) {
   const Comparator* ucmp = vset_->icmp_.user_comparator();
-  LOGFC(COLOR_BLUE, stdout, "in ForEachOverlapping function\n");
+  // LOGFC(COLOR_BLUE, stdout, "in ForEachOverlapping function\n");
 
   // Search level-0 in order from newest to oldest.
   std::vector<std::shared_ptr<RemoteMemTableMetaData>> tmp;
@@ -289,7 +289,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
     }
   }
   if (!tmp.empty()) {
-    LOGFC(COLOR_BLUE, stdout, "searching level 0\n");
+    // LOGFC(COLOR_BLUE, stdout, "searching level 0\n");
     std::sort(tmp.begin(), tmp.end(), NewestFirst);
     for (uint32_t i = 0; i < tmp.size(); i++) {
       if (!(*func)(arg, 0, tmp[i])) {
@@ -300,26 +300,26 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
 
   // Search other levels.
   for (int level = 1; level < config::kNumLevels; level++) {
-    LOGFC(COLOR_BLUE, stdout, "searching level %d\n", level);
+    // LOGFC(COLOR_BLUE, stdout, "searching level %d\n", level);
     size_t num_files = levels_[level].size();
     if (num_files == 0) continue;
 
     // Binary search to find earliest index whose largest key >= internal_key.
     uint32_t index = FindFile(vset_->icmp_, levels_[level], internal_key);
     if (index < num_files) {
-      LOGFC(COLOR_BLUE, stdout, "index is less\n", level);
+      // LOGFC(COLOR_BLUE, stdout, "index is less\n", level);
       std::shared_ptr<RemoteMemTableMetaData> f = levels_[level][index];
       if (ucmp->Compare(user_key, f->smallest.user_key()) < 0) {
-        LOGFC(COLOR_BLUE, stdout, "All of \"f\" is past any data for user_key\n", level);
+        // LOGFC(COLOR_BLUE, stdout, "All of \"f\" is past any data for user_key\n", level);
         // All of "f" is past any data for user_key
       } else {
 //        async();
-       LOGFC(COLOR_BLUE, stdout, "check for match\n", level);
+      //  LOGFC(COLOR_BLUE, stdout, "check for match\n", level);
 //        IF(RMDA ->TRY_POLL()){
 //
 //        }
         if (!(*func)(arg, level, f)) {
-          LOGFC(COLOR_BLUE, stdout, "Found in the SSTables\n", level);
+          // LOGFC(COLOR_BLUE, stdout, "Found in the SSTables\n", level);
 //          printf("Found in the SSTables\n");
           return;
         }
@@ -416,7 +416,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
       // added by Arman -> 20 September 2024
       bool cache_miss = false;
       size_t mem_access = 0; 
-      LOGFC(COLOR_BLUE, stdout, "in match function\n");
+      // LOGFC(COLOR_BLUE, stdout, "in match function\n");
       // added above by Arman -> 20 September 2024
 
       state->s = state->vset->table_cache_->Get(*state->options, f,
@@ -467,7 +467,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
   state.saver.user_key = k.user_key();
   state.saver.value = value;
 
-  LOGFC(COLOR_BLUE, stdout, "in version get function\n");
+  // LOGFC(COLOR_BLUE, stdout, "in version get function\n");
 
 #ifndef ASYNC_READ
   ForEachOverlapping(state.saver.user_key, state.ikey, &state, &State::Match);
