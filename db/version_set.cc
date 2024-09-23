@@ -409,7 +409,8 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
 
       // added by Arman -> 20 September 2024
       bool cache_miss = false;
-      size_t mem_access = 0;
+      size_t mem_access = 0; 
+      LOGFC(COLOR_BLUE, stdout, "in match function\n");
       // added above by Arman -> 20 September 2024
 
       state->s = state->vset->table_cache_->Get(*state->options, f,
