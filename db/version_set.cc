@@ -276,6 +276,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
                                  bool (*func)(void*, int,
                                               std::shared_ptr<RemoteMemTableMetaData>)) {
   const Comparator* ucmp = vset_->icmp_.user_comparator();
+  LOGFC(COLOR_BLUE, stdout, "in ForEachOverlapping function\n");
 
   // Search level-0 in order from newest to oldest.
   std::vector<std::shared_ptr<RemoteMemTableMetaData>> tmp;
@@ -288,6 +289,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
     }
   }
   if (!tmp.empty()) {
+    LOGFC(COLOR_BLUE, stdout, "searching level 0\n");
     std::sort(tmp.begin(), tmp.end(), NewestFirst);
     for (uint32_t i = 0; i < tmp.size(); i++) {
       if (!(*func)(arg, 0, tmp[i])) {
@@ -298,6 +300,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
 
   // Search other levels.
   for (int level = 1; level < config::kNumLevels; level++) {
+    LOGFC(COLOR_BLUE, stdout, "searching level %d\n", level);
     size_t num_files = levels_[level].size();
     if (num_files == 0) continue;
 
@@ -460,6 +463,8 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
   state.saver.ucmp = vset_->icmp_.user_comparator();
   state.saver.user_key = k.user_key();
   state.saver.value = value;
+
+  LOGFC(COLOR_BLUE, stdout, "in version get function\n");
 
 #ifndef ASYNC_READ
   ForEachOverlapping(state.saver.user_key, state.ikey, &state, &State::Match);
