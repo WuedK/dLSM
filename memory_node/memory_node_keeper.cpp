@@ -121,7 +121,7 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
 
     config_file.close();
 
-    load_balancer = new Load_Balancer(rdma_mg->compute_nodes.size(), num_shards_per_compute);
+    // load_balancer = new Load_Balancer(rdma_mg->compute_nodes.size(), num_shards_per_compute);
   }
 
   Memory_Node_Keeper::~Memory_Node_Keeper() {
@@ -132,10 +132,10 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
     if (descriptor_file != nullptr){
       delete descriptor_file;
     }
-    if (load_balancer != nullptr) {
-      delete load_balancer;
-      load_balancer = nullptr;
-    }
+    // if (load_balancer != nullptr) {
+    //   delete load_balancer;
+    //   load_balancer = nullptr;
+    // }
   }
 
 //  void TimberSaw::Memory_Node_Keeper::Schedule(void (*background_work_function)(void*),
