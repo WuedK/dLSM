@@ -1136,7 +1136,7 @@ class Benchmark {
       node_lower_bound += num_past_shards * number_of_key_per_shard 
                         + std::min(number_of_remainder_keys, num_past_shards);
       node_upper_bound = node_lower_bound + number_of_key_per_shard * FLAGS_fixed_compute_shards_num 
-                        + std::min(key_remaining, FLAGS_fixed_compute_shards_num);
+                        + std::min(key_remaining, (size_t)FLAGS_fixed_compute_shards_num);
 
       key_remaining = number_of_remainder_keys;
 
