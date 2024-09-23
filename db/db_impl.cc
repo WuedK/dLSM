@@ -4042,9 +4042,13 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
-      LOGFC(COLOR_GREEN, stdout, "got to SSTabels: cache_miss: %lu, mem_access: %lu\n", stats.cache_miss, stats.mem_access);
-      load.increment_rreads(stats.cache_miss); // added by Arman -> 20 September 2024
-      load.increment_local_access(stats.mem_access); // added by Arman -> 20 September 2024
+      // added by Arman -> 23 September 2024
+      if (stats.cache_miss != 0 || stats.mem_access != 0) {
+        LOGFC(COLOR_GREEN, stdout, "got to SSTabels: cache_miss: %lu, mem_access: %lu\n", stats.cache_miss, stats.mem_access);
+        load.increment_rreads(stats.cache_miss); // added by Arman -> 20 September 2024
+        load.increment_local_access(stats.mem_access); // added by Arman -> 20 September 2024
+      }
+      // added above by Arman -> 23 September 2024
 //      have_stat_update = true;
     }
     // added by Arman -> 20 September 2024

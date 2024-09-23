@@ -22,9 +22,9 @@ public:
     // }
 
     void increment_local_access(size_t num = 1) {
-        // num_laccess.fetch_add(num);
         if (num > 0)
-            LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num local access: %lu\n", shard_id, num_laccess.fetch_add(num) + num);
+            num_laccess.fetch_add(num);
+        //     LOGFC(COLOR_CYAN, stdout, "shard_id %hhu: num local access: %lu\n", shard_id, num_laccess.fetch_add(num) + num);
     }
 
     void increment_rreads(size_t num = 1) {
