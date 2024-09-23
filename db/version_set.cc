@@ -307,16 +307,19 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
     // Binary search to find earliest index whose largest key >= internal_key.
     uint32_t index = FindFile(vset_->icmp_, levels_[level], internal_key);
     if (index < num_files) {
+      LOGFC(COLOR_BLUE, stdout, "index is less\n", level);
       std::shared_ptr<RemoteMemTableMetaData> f = levels_[level][index];
       if (ucmp->Compare(user_key, f->smallest.user_key()) < 0) {
+        LOGFC(COLOR_BLUE, stdout, "All of "f" is past any data for user_key\n", level);
         // All of "f" is past any data for user_key
       } else {
 //        async();
-//
+       LOGFC(COLOR_BLUE, stdout, "check for match\n", level);
 //        IF(RMDA ->TRY_POLL()){
 //
 //        }
         if (!(*func)(arg, level, f)) {
+          LOGFC(COLOR_BLUE, stdout, "Found in the SSTables\n", level);
 //          printf("Found in the SSTables\n");
           return;
         }
