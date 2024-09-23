@@ -310,7 +310,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
       LOGFC(COLOR_BLUE, stdout, "index is less\n", level);
       std::shared_ptr<RemoteMemTableMetaData> f = levels_[level][index];
       if (ucmp->Compare(user_key, f->smallest.user_key()) < 0) {
-        LOGFC(COLOR_BLUE, stdout, "All of "f" is past any data for user_key\n", level);
+        LOGFC(COLOR_BLUE, stdout, "All of \"f\" is past any data for user_key\n", level);
         // All of "f" is past any data for user_key
       } else {
 //        async();
