@@ -49,6 +49,8 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
 if(uppercase_CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb -fsanitize=address -fno-omit-frame-pointer")
   SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb -fsanitize=address -fno-omit-frame-pointer")
+
+  set(ENV{ASAN_OPTIONS} "allocator_may_return_null=1") # for fsanitize=address
 endif()
 
 include(CheckCXXSymbolExists)
