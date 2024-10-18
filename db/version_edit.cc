@@ -58,6 +58,7 @@ RemoteMemTableMetaData::~RemoteMemTableMetaData() {
   if (this_machine_type == 0){
     assert(table_cache!= nullptr);
     if (table_cache != nullptr){
+      DEBUG("it went to here?!\n");
       table_cache->Evict(number, creator_node_id);
     }
     if (creator_node_id == rdma_mg->node_id){
