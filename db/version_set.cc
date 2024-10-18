@@ -739,12 +739,14 @@ class VersionSet::Builder {
   //TODO(ruihong): change it back to no current validation.
   void Apply(VersionEdit* edit, Version* current) {
     assert(current = base_);
+    DEBUG("in Apply\n");
     // Update compaction pointers
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;
       vset_->compact_index_[level] =
           edit->compact_pointers_[i].second.Encode().ToString();
     }
+    DEBUG("Updated compaction pointers\n");
 
     // Delete files
     for (const auto& deleted_file_set_kvp : edit->deleted_files_) {
@@ -754,6 +756,7 @@ class VersionSet::Builder {
       levels_[level].deleted_files.insert({number, node_id});
 //      printf("level %d, number %lu\n", level, number);
     }
+    DEBUG("Deleted files\n");
 //    printf("Apply: level 0 deleted file size %lu\n", levels_[0].deleted_files.size());
 //    printf("Apply: level 1 deleted file size %lu\n", levels_[1].deleted_files.size());
     // Add new files
@@ -795,6 +798,7 @@ class VersionSet::Builder {
 
 //      printf("Apply2: level 1 deleted file size %lu\n", levels_[1].deleted_files.size());
     }
+    DEBUG("Added files\n");
   }
 
   // Save the current state in *v.
