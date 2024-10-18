@@ -1053,9 +1053,12 @@ Status VersionSet::LogAndApply(VersionEdit* edit) {
 #ifdef PROCESSANALYSIS
   metadata_install_counter++;
 #endif
+  DEBUG("VersionSet::LogAndApply\n");
   edit->SetLastSequence(last_sequence_);
+  DEBUG("after SetLastSequence\n");
   Version* v;
   v = new Version(this);
+  DEBUG("created new version\n");
 #ifdef WITHPERSISTENCE
   if (!edit->IsTrival()) {
     Persistency_pin(edit);
@@ -1091,15 +1094,19 @@ Status VersionSet::LogAndApply(VersionEdit* edit) {
   {
     // Decide what table to keep what to discard.
     Builder builder(this, current_.load());
+    DEBUG("created Builder\n");
     // apply to the new version, no need to apply delete files, only add
     // alive files and new files to the new version just created
     builder.Apply(edit, current_.load());
+    DEBUG("applied edit with builder\n");
     builder.SaveTo(v);
+    DEBUG("builder save\n");
   }
 //  if (edit->compactlevel() +1 > top_level){
 //    top_level = edit->compactlevel() +1;
 //  }
   Finalize(v);
+  DEBUG("after finalized\n");
 
   // Initialize new descriptor log file if necessary by creating
   // a temporary file that contains a snapshot of the current version.
@@ -1149,6 +1156,7 @@ Status VersionSet::LogAndApply(VersionEdit* edit) {
 //    std::unique_lock<std::mutex> lck(*version_set_mtx);
 
     AppendVersion(v);
+    DEBUG("after AppendVersion\n");
   } else {
     delete v;
     printf("installing new version failed");
