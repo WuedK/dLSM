@@ -763,6 +763,7 @@ class VersionSet::Builder {
     for (size_t i = 0; i < edit->new_files_.size(); i++) {
       const int level = edit->new_files_[i].first;
       std::shared_ptr<RemoteMemTableMetaData> f = edit->new_files_[i].second;
+      DEBUG_arg("i = %ld", i);
 
       assert(level == f->level);
       assert(f.get()!= nullptr);
@@ -789,11 +790,14 @@ class VersionSet::Builder {
       }
       std::pair <std::multimap<uint64_t, uint8_t>::iterator, std::multimap<uint64_t ,uint8_t>::iterator>
       ret = levels_[level].deleted_files.equal_range(f->number);
+      DEBUG("before loop\n");
       for (std::multimap<uint64_t, uint8_t>::iterator it=ret.first; it!=ret.second; ++it){
         if (it->second == f->creator_node_id)
           levels_[level].deleted_files.erase(it);
       }
+      DEBUG("after loop\n");
       levels_[level].added_files->insert(f);
+      DEBUG_arg("inserted for %lu\n", level);
       //TODO: Why deleted file will be be remove from deletedfiles if it exist in added file
 
 //      printf("Apply2: level 1 deleted file size %lu\n", levels_[1].deleted_files.size());
