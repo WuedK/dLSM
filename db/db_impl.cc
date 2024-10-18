@@ -2668,17 +2668,22 @@ void DBImpl::NearDataCompaction(Compaction* c) {
   DEBUG_arg("new file number for end is %lu \n", file_number_start);
   DEBUG_arg("Edit new file number is %lu\n", new_file_size);
   edit.SetFileNumbers(file_number_start);
+  DEBUG_arg("after SetFileNumbers \n");
   {
     std::unique_lock<std::mutex> sv_lck(superversion_memlist_mtx);
     // TODO: remove the version id argument because we no longer need it.
 //    std::unique_lock<std::mutex> lck_vs(versionset_mtx, std::defer_lock);
 
     versions_->LogAndApply(&edit);
+    DEBUG_arg("after LogAndApply \n");
     c->ReleaseInputs();
+    DEBUG_arg("after ReleaseInputs \n");
 //    lck_vs.unlock();
 
     InstallSuperVersion();
+    DEBUG_arg("after InstallSuperVersion \n");
     write_stall_cv.notify_all();
+    DEBUG_arg("after notify_all \n");
   }
 
 #ifdef WITHPERSISTENCE
