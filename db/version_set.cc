@@ -984,7 +984,7 @@ VersionSet::~VersionSet() {
   printf("version set install times is %lu\n", metadata_install_counter);
 #endif
 #ifndef NDEBUG
-  printf("remained versuins number is %d", version_remain);
+  printf("remained versuins number is %d and verion_all is %d", version_remain, version_all);
 #endif
 
 }
