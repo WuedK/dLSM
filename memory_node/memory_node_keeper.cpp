@@ -37,7 +37,7 @@ TimberSaw::Memory_Node_Keeper::Memory_Node_Keeper(bool use_sub_compaction,
         NULL,  /* server_name */
       tcp_port, /* tcp_port */
         1,	 /* ib_port */
-        1, /* gid_idx */
+        0, /* gid_idx */
         0};
     //  size_t write_block_size = 4*1024*1024;
     //  size_t read_block_size = 4*1024;
